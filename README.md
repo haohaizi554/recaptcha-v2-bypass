@@ -1,241 +1,241 @@
-# reCAPTCHA v2 Automated Bypass
+# reCAPTCHA v2 自动化绕过工具
 
-A comprehensive, multi-strategy reCAPTCHA v2 bypass tool built with Python, Playwright, and AI-powered image recognition. Designed for educational purposes and authorized testing environments.
+基于 Python、Playwright 和 AI 图像识别的多策略 reCAPTCHA v2 绕过工具。仅供教育目的和授权测试环境使用。
 
-## Features
+## 功能特性
 
-**7 Solving Strategies** — from free audio recognition to zero-trace OS-level automation:
+**7 种求解策略** — 从免费音频识别到零痕迹 OS 级自动化：
 
-| # | Strategy | Cost | Approach | Key Tech |
-|---|----------|------|----------|----------|
-| 1 | Audio Recognition | Free | Download audio challenge → speech-to-text | faster-whisper (INT8) |
-| 2 | 2captcha API | ~$3/1000 | Submit sitekey to human-solving service | REST API |
-| 3 | AI Image Recognition | Free | YOLOv8 classification + segmentation + CLIP | Three-engine architecture |
-| 4 | Accessibility Cookie | Free | Use accessibility cookie to skip challenge | Cookie injection |
-| 5 | Browser Extension | Free | NopeCHA extension auto-solve | Chrome extension |
-| 6 | Stealth + Human Behavior | Free | Anti-detection fingerprint + human-like behavior | patchright + Bezier curves |
-| 7 | Native Zero-Trace | Free | OS-level click + Win32 calibration + YOLO fallback | patchright + PyAutoGUI |
+| # | 策略 | 费用 | 原理 | 核心技术 |
+|---|------|------|------|----------|
+| 1 | 音频识别 | 免费 | 下载音频挑战 → 语音转文字 | faster-whisper (INT8 量化) |
+| 2 | 2captcha API | ~$3/1000次 | 提交 sitekey 到人工打码服务 | REST API |
+| 3 | AI 图像识别 | 免费 | YOLOv8 分类 + 分割 + CLIP | 三引擎架构 |
+| 4 | 无障碍 Cookie | 免费 | 使用 accessibility cookie 跳过挑战 | Cookie 注入 |
+| 5 | 浏览器扩展 | 免费 | NopeCHA 扩展自动求解 | Chrome 扩展 |
+| 6 | Stealth + 真人行为 | 免费 | 反检测指纹 + 模拟人类行为 | patchright + 贝塞尔曲线 |
+| 7 | 原生零痕迹 | 免费 | OS 级点击 + Win32 坐标校准 + YOLO 回退 | patchright + PyAutoGUI |
 
-### Three-Engine Image Recognition Architecture
+### 三引擎图像识别架构
 
 ```
-Challenge Grid → Engine Selection → Tile Matching → Click + Verify
+挑战网格 → 引擎选择 → Tile 匹配 → 点击 + 验证
 
 ┌──────────────────────────────────────────────────────┐
-│  3x3 Grid (9 tiles)                                  │
-│  ├── YOLOv8-cls (13-class fine-tuned, 99.88% acc)   │
-│  └── CLIP fallback (non-standard categories)         │
+│  3x3 网格 (9 个 tile)                                │
+│  ├── YOLOv8-cls (13类微调模型, 99.88% 准确率)       │
+│  └── CLIP 回退 (非标准类别)                          │
 │                                                      │
-│  4x4 Grid (16 tiles)                                 │
-│  ├── YOLOv8-seg (COCO segmentation + overlap ratio) │
-│  └── YOLOv8-cls ranking mode (fallback)             │
+│  4x4 网格 (16 个 tile)                               │
+│  ├── YOLOv8-seg (COCO 分割 + 重叠比例检测)          │
+│  └── YOLOv8-cls 排序模式 (回退)                      │
 │                                                      │
-│  Any Grid → CLIP (zero-shot, ranked selection)       │
+│  任意网格 → CLIP (零样本, 排序选择)                   │
 └──────────────────────────────────────────────────────┘
 ```
 
-### Native Zero-Trace Strategy (Most Advanced)
+### 原生零痕迹策略 (最先进)
 
-Bypasses reCAPTCHA detection at the OS level — no CDP protocol, no `Runtime.enable` leaks:
+在 OS 层面绕过 reCAPTCHA 检测 — 无 CDP 协议、无 `Runtime.enable` 泄露：
 
-- **patchright** `launch_persistent_context` — eliminates `webdriver` flag and `cdc_` traces
-- **Win32 coordinate calibration** — `GetClientRect` + `ClientToScreen` for DPI-aware checkbox positioning
-- **PyAutoGUI OS-level click** — generates `isTrusted=true` mouse events
-- **Spiral search** — auto-corrects coordinate offset with expanding search pattern
-- **YOLO three-engine fallback** — when image challenge triggers, solves with AI
+- **patchright** `launch_persistent_context` — 消除 `webdriver` 标记和 `cdc_` 痕迹
+- **Win32 坐标校准** — `GetClientRect` + `ClientToScreen` 实现 DPI 自适应 checkbox 定位
+- **PyAutoGUI OS 级点击** — 生成 `isTrusted=true` 鼠标事件
+- **螺旋搜索** — 坐标偏移时自动以扩展搜索模式修正
+- **YOLO 三引擎回退** — 触发图像挑战时用 AI 求解
 
-## Project Structure
+## 项目结构
 
 ```
 .
-├── main.py                    # Unified entry point (GUI / CLI / direct mode)
-├── gui.py                     # PyQt6 GUI with model preloading and priority queue
-├── config.py                  # Configuration (reads credentials from env vars)
-├── solutions.py               # Solution registry and dependency checker
-├── requirements.txt           # Python dependencies
+├── main.py                    # 统一入口 (GUI / CLI / 直接模式)
+├── gui.py                     # PyQt6 GUI (模型预加载 + 优先级队列)
+├── config.py                  # 配置文件 (从环境变量读取凭据)
+├── solutions.py               # 方案注册和依赖检查
+├── requirements.txt           # Python 依赖
 │
-├── core/                      # Shared infrastructure
-│   ├── base_runtime.py        # Base runtime: browser init, navigation, form submit
-│   ├── model_loader.py        # Background model preloading (QThread)
-│   ├── task_queue.py          # Four-level priority queue with backpressure
-│   ├── persistence.py         # QSettings + SQLite (WAL mode)
-│   └── window_chrome.py       # Win32 Chrome window management
+├── core/                      # 共享基础设施
+│   ├── base_runtime.py        # 基础运行时: 浏览器初始化、导航、表单提交
+│   ├── model_loader.py        # 后台模型预加载 (QThread)
+│   ├── task_queue.py          # 四级优先级队列 + 背压控制
+│   ├── persistence.py         # QSettings + SQLite (WAL 模式)
+│   └── window_chrome.py       # Win32 Chrome 窗口管理
 │
-├── runtimes/                  # Solving strategies (7 strategies)
-│   ├── runtime_audio.py       # Audio recognition (faster-whisper)
+├── runtimes/                  # 求解策略 (7 种)
+│   ├── runtime_audio.py       # 音频识别 (faster-whisper)
 │   ├── runtime_api.py         # 2captcha / CapSolver API
-│   ├── runtime_image.py       # AI image recognition (YOLO + CLIP)
-│   ├── runtime_cookie.py      # Accessibility cookie
-│   ├── runtime_extension.py   # NopeCHA browser extension
-│   ├── runtime_stealth.py     # Stealth + human behavior simulation
-│   └── runtime_native.py      # Zero-trace OS-level (patchright + PyAutoGUI)
+│   ├── runtime_image.py       # AI 图像识别 (YOLO + CLIP)
+│   ├── runtime_cookie.py      # 无障碍 Cookie
+│   ├── runtime_extension.py   # NopeCHA 浏览器扩展
+│   ├── runtime_stealth.py     # Stealth + 真人行为模拟
+│   └── runtime_native.py      # 零痕迹 OS 级 (patchright + PyAutoGUI)
 │
-├── audio_solver.py            # Audio challenge solver (Whisper)
-├── captcha_solver.py          # API-based solver (2captcha / CapSolver)
-├── recaptcha_bypass.py        # Legacy entry point
+├── audio_solver.py            # 音频挑战求解器 (Whisper)
+├── captcha_solver.py          # API 求解器 (2captcha / CapSolver)
+├── recaptcha_bypass.py        # 旧版入口
 │
-├── models/                    # Pre-trained models
-│   └── recaptcha_cls_best.pt  # YOLOv8-cls fine-tuned (13 reCAPTCHA classes)
+├── models/                    # 预训练模型
+│   └── recaptcha_cls_best.pt  # YOLOv8-cls 微调 (13 个 reCAPTCHA 类别)
 │
-├── extensions/nopecha/        # NopeCHA extension placeholder
-└── run_e2e_test.py            # End-to-end test runner
+├── extensions/nopecha/        # NopeCHA 扩展占位
+└── run_e2e_test.py            # 端到端测试
 ```
 
-## Requirements
+## 环境要求
 
 - **Python 3.10+**
-- **Windows 10/11** (Native strategy requires Win32 API + PyAutoGUI)
-- **Chrome browser** (Playwright uses system Chrome via `channel="chrome"`)
+- **Windows 10/11** (原生策略需要 Win32 API + PyAutoGUI)
+- **Chrome 浏览器** (Playwright 通过 `channel="chrome"` 使用系统 Chrome)
 
-### Python Dependencies
+### Python 依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Key dependencies:
-- `playwright` + `playwright-stealth` — Browser automation with anti-detection
-- `patchright` — CDP-leak-free Playwright fork (Native strategy)
-- `faster-whisper` — Speech recognition (audio strategy, INT8 quantization)
-- `ultralytics` — YOLOv8 inference (image strategy)
-- `transformers` + `torch` — CLIP model (image fallback)
-- `PyQt6` — GUI framework
-- `pyautogui` + `pywin32` — OS-level mouse control and Win32 API
+核心依赖：
+- `playwright` + `playwright-stealth` — 浏览器自动化 + 反检测
+- `patchright` — 无 CDP 泄露的 Playwright 分支 (原生策略)
+- `faster-whisper` — 语音识别 (音频策略, INT8 量化)
+- `ultralytics` — YOLOv8 推理 (图像策略)
+- `transformers` + `torch` — CLIP 模型 (图像回退)
+- `PyQt6` — GUI 框架
+- `pyautogui` + `pywin32` — OS 级鼠标控制和 Win32 API
 
-After installing, run:
+安装后执行：
 ```bash
 playwright install chromium
 ```
 
-## Configuration
+## 配置
 
-All sensitive configuration is read from environment variables:
+所有敏感配置从环境变量读取：
 
 ```bash
 # Windows
 set ACCOUNT_EMAIL=your_email@gmail.com
 set ACCOUNT_PASSWORD=your_password
 
-# Optional: API keys for paid strategies
+# 可选: 付费策略的 API 密钥
 set TWOCAPTCHA_API_KEY=your_key
 set CAPSOLVER_API_KEY=your_key
 ```
 
-Or edit `config.py` directly with your values.
+也可以直接编辑 `config.py` 填写你的值。
 
-### Key Config Options
+### 关键配置项
 
-| Config | Default | Description |
-|--------|---------|-------------|
-| `SOLVER_METHOD` | `"audio"` | Default solving strategy |
-| `BROWSER_HEADLESS` | `False` | Headless mode (may trigger more challenges) |
-| `NAV_MAX_RETRIES` | `6` | Navigation retry count |
-| `RECAPTCHA_MAX_RETRIES` | `6` | Solving retry count |
-| `IMAGE_RANK_SCORE_GAP` | `0.45` | CLIP adaptive floor gap |
-| `NATIVE_CLICK_RESULT_WAIT` | `30` | OS click response wait (seconds) |
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `SOLVER_METHOD` | `"audio"` | 默认求解策略 |
+| `BROWSER_HEADLESS` | `False` | 无头模式 (可能触发更多挑战) |
+| `NAV_MAX_RETRIES` | `6` | 导航重试次数 |
+| `RECAPTCHA_MAX_RETRIES` | `6` | 求解重试次数 |
+| `IMAGE_RANK_SCORE_GAP` | `0.45` | CLIP 自适应间隔阈值 |
+| `NATIVE_CLICK_RESULT_WAIT` | `30` | OS 点击后等待响应时间 (秒) |
 
-## Usage
+## 使用方法
 
-### GUI Mode (Default)
+### GUI 模式 (默认)
 
 ```bash
 python main.py
 ```
 
-Launches PyQt6 GUI with:
-- Solution selector with dependency status
-- Real-time log viewer with smart scrolling
-- Model preloading progress
-- Run history and success rate statistics
+启动 PyQt6 图形界面，包含：
+- 方案选择器 (带依赖状态检测)
+- 实时日志查看器 (智能滚动)
+- 模型预加载进度
+- 运行历史和成功率统计
 
-### CLI Mode
+### CLI 模式
 
 ```bash
-# List available strategies
+# 列出可用策略
 python main.py --list
 
-# Run specific strategy
+# 运行指定策略
 python main.py -m native
 python main.py -m audio
 python main.py -m image
 
-# Check dependencies
+# 检查依赖
 python main.py --check
 ```
 
-### Direct Script
+### 直接脚本
 
 ```bash
 python recaptcha_bypass.py
 ```
 
-## Technical Highlights
+## 技术亮点
 
-### Anti-Detection (Minimal Intervention Principle)
+### 反检测 (最小化干预原则)
 
-Only patches what real Chromium lacks — never overwrites real fingerprint values:
+只修补真实 Chromium 缺失的部分 — 绝不覆盖真实指纹值：
 
-- `navigator.webdriver`: `false` → `undefined` (patchright handles this)
-- `window.chrome.runtime`: added only if missing
-- `cdc_` traces: cleaned from document
-- Real WebGL renderer, plugins, hardwareConcurrency: **untouched** (avoiding consistency contradictions)
+- `navigator.webdriver`: `false` → `undefined` (patchright 处理)
+- `window.chrome.runtime`: 仅在缺失时补充
+- `cdc_` 痕迹: 从 document 中清除
+- 真实 WebGL 渲染器、插件、硬件并发数: **保持不动** (避免一致性矛盾)
 
-### Win32 Coordinate Calibration
+### Win32 坐标校准
 
-Solves the DPI-aware checkbox positioning problem without screenshots:
-
-```
-GetClientRect (excludes window border)
-  → ClientToScreen (physical screen origin)
-  → + Chrome UI height (client_h - innerH × DPI)
-  → + checkbox CSS × real DPI
-  → Physical pixel coordinates for PyAutoGUI
-```
-
-### Page State Management
-
-Comprehensive `page.is_closed()` checks throughout the pipeline prevent `TargetClosedError` cascades:
-- Before every screenshot attempt
-- Before form submission
-- Before result verification
-- Custom asyncio exception handler downgrades `TargetClosedError` to debug logs
-
-### Four-Level Priority Queue
+无需截图即可解决 DPI 自适应的 checkbox 定位问题：
 
 ```
-CRITICAL (100) → User interaction, real-time UI updates
-HIGH (50)      → Real-time log updates
-NORMAL (0)     → Background tasks
-LOW (-50)      → Maintenance, log sampling
+GetClientRect (排除窗口边框)
+  → ClientToScreen (物理屏幕原点)
+  → + Chrome UI 高度 (client_h - innerH × DPI)
+  → + checkbox CSS 坐标 × 真实 DPI
+  → PyAutoGUI 可用的物理像素坐标
 ```
 
-With backpressure: rejects LOW/NORMAL tasks when pending > 200, samples 90% of INFO logs.
+### 页面状态管理
 
-## Testing
+全流程 `page.is_closed()` 检查，防止 `TargetClosedError` 级联异常：
+- 每次截图前检查
+- 表单提交前检查
+- 结果验证前检查
+- 自定义 asyncio 异常处理器将 `TargetClosedError` 降级为 debug 日志
+
+### 四级优先级队列
+
+```
+CRITICAL (100) → 用户交互、实时 UI 更新
+HIGH (50)      → 实时日志更新
+NORMAL (0)     → 后台任务
+LOW (-50)      → 维护、日志采样
+```
+
+带背压控制: 待处理任务超过 200 时拒绝 LOW/NORMAL 任务，采样丢弃 90% 的 INFO 日志。
+
+## 测试
 
 ```bash
-# Run end-to-end tests
+# 端到端测试
 python run_e2e_test.py
 
-# Run specific route tests
+# 路由测试
 python run_routes_test.py
 
-# Run native strategy test
+# 原生策略测试
 python run_native_test.py
 ```
 
-## Disclaimer
+## 免责声明
 
-This tool is developed for **educational purposes** and **authorized testing environments** only. Users are responsible for complying with applicable laws and terms of service. The authors do not condone any unauthorized or malicious use.
+本工具仅供**教育目的**和**授权测试环境**使用。使用者需遵守适用法律和服务条款。作者不鼓励任何未经授权或恶意的使用。
 
-## License
+## 开源协议
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License — 详见 [LICENSE](LICENSE)。
 
-## Acknowledgments
+## 致谢
 
-- [ETH Zurich "Breaking reCAPTCHAv2"](https://github.com/aplesner/Breaking-reCAPTCHAv2) — YOLOv8-cls fine-tuned model source
-- [patchright](https://github.com/Kaliiiiiiiiii-Vinyzu/patchright) — CDP-leak-free Playwright fork
-- [playwright-stealth](https://github.com/Mattwmaster58/playwright_stealth) — Anti-detection scripts
-- [faster-whisper](https://github.com/SYSTRAN/faster-whisper) — Fast speech recognition
-- [ultralytics](https://github.com/ultralytics/ultralytics) — YOLOv8 framework
+- [ETH Zurich "Breaking reCAPTCHAv2"](https://github.com/aplesner/Breaking-reCAPTCHAv2) — YOLOv8-cls 微调模型来源
+- [patchright](https://github.com/Kaliiiiiiiiii-Vinyzu/patchright) — 无 CDP 泄露的 Playwright 分支
+- [playwright-stealth](https://github.com/Mattwmaster58/playwright_stealth) — 反检测脚本
+- [faster-whisper](https://github.com/SYSTRAN/faster-whisper) — 快速语音识别
+- [ultralytics](https://github.com/ultralytics/ultralytics) — YOLOv8 框架
