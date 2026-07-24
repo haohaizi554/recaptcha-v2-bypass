@@ -53,9 +53,7 @@ def setup_logging() -> Path:
     root.handlers.clear()
     root.setLevel(getattr(logging, config.LOG_LEVEL, logging.INFO))
 
-    formatter = logging.Formatter(
-        "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
     file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
     file_handler.setFormatter(formatter)

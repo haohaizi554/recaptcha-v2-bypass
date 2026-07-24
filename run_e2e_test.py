@@ -15,13 +15,13 @@
 """
 
 import asyncio
+import json
 import logging
 import os
+import platform
+import subprocess
 import sys
 import time
-import subprocess
-import platform
-import json
 
 # 添加项目根目录到路径
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -61,7 +61,8 @@ def kill_all_chrome():
         if platform.system() == "Windows":
             subprocess.run(
                 ["taskkill", "/F", "/IM", "chrome.exe"],
-                capture_output=True, timeout=10,
+                capture_output=True,
+                timeout=10,
             )
         else:
             subprocess.run(["pkill", "-f", "chrome"], capture_output=True, timeout=10)
@@ -74,7 +75,7 @@ def cleanup_chrome_locks():
     """清理Chrome profile残留锁文件"""
     if platform.system() != "Windows":
         return
-    local_appdata = os.environ.get("LocalAppData", "")
+    local_appdata = os.environ.get("LOCALAPPDATA", "")
     user_data_dir = os.path.join(local_appdata, "Google", "Chrome", "User Data")
     if not os.path.exists(user_data_dir):
         return
@@ -128,8 +129,7 @@ class StepTracker:
         self.results[step] = (success, duration, detail)
         status = "✅" if success else "❌"
         logger.info(
-            f"[{self.runtime_name}] {status} {step}: "
-            f"{'成功' if success else '失败'} ({duration:.1f}s) {detail}"
+            f"[{self.runtime_name}] {status} {step}: {'成功' if success else '失败'} ({duration:.1f}s) {detail}"
         )
 
     def summary(self) -> dict:
@@ -142,8 +142,7 @@ class StepTracker:
             "steps_passed": f"{passed}/{len(self.STEPS)}",
             "total_duration": f"{total:.1f}s",
             "steps": {
-                k: {"success": v[0], "duration": f"{v[1]:.1f}s", "detail": v[2]}
-                for k, v in self.results.items()
+                k: {"success": v[0], "duration": f"{v[1]:.1f}s", "detail": v[2]} for k, v in self.results.items()
             },
         }
 
@@ -194,15 +193,19 @@ async def test_runtime_e2e(runtime_name: str, tracker: StepTracker) -> bool:
     # 动态导入对应的runtime类
     if runtime_name == "native":
         from runtimes.runtime_native import NativeRuntime
+
         runtime = NativeRuntime()
     elif runtime_name == "audio":
         from runtimes.runtime_audio import AudioRuntime
+
         runtime = AudioRuntime()
     elif runtime_name == "stealth":
         from runtimes.runtime_stealth import StealthRuntime
+
         runtime = StealthRuntime()
     elif runtime_name == "image":
         from runtimes.runtime_image import ImageRuntime
+
         runtime = ImageRuntime()
     else:
         logger.error(f"未知runtime: {runtime_name}")
@@ -224,8 +227,7 @@ async def test_runtime_e2e(runtime_name: str, tracker: StepTracker) -> bool:
         t0 = time.perf_counter()
         try:
             await runtime.init_browser()
-            tracker.record("init_browser", True, time.perf_counter() - t0,
-                          "浏览器已初始化")
+            tracker.record("init_browser", True, time.perf_counter() - t0, "浏览器已初始化")
         except Exception as e:
             tracker.record("init_browser", False, time.perf_counter() - t0, str(e))
             return False
@@ -236,11 +238,9 @@ async def test_runtime_e2e(runtime_name: str, tracker: StepTracker) -> bool:
             await runtime.navigate_to_target()
             username_count = await runtime.page.locator("#username").count()
             if username_count > 0:
-                tracker.record("navigate_to_target", True, time.perf_counter() - t0,
-                              "已到达登录页 (#username)")
+                tracker.record("navigate_to_target", True, time.perf_counter() - t0, "已到达登录页 (#username)")
             else:
-                tracker.record("navigate_to_target", False, time.perf_counter() - t0,
-                              "未找到 #username")
+                tracker.record("navigate_to_target", False, time.perf_counter() - t0, "未找到 #username")
                 await save_debug_info(runtime, runtime_name, "navigate_failed")
                 return False
         except Exception as e:
@@ -253,8 +253,7 @@ async def test_runtime_e2e(runtime_name: str, tracker: StepTracker) -> bool:
         try:
             sitekey = await runtime.extract_sitekey()
             page_url = runtime.page.url
-            tracker.record("extract_sitekey", True, time.perf_counter() - t0,
-                          f"sitekey={sitekey[:20]}...")
+            tracker.record("extract_sitekey", True, time.perf_counter() - t0, f"sitekey={sitekey[:20]}...")
         except Exception as e:
             tracker.record("extract_sitekey", False, time.perf_counter() - t0, str(e))
             return False
@@ -275,17 +274,14 @@ async def test_runtime_e2e(runtime_name: str, tracker: StepTracker) -> bool:
         # Step 5: inject_token_and_submit
         # 如果 solve_recaptcha 失败, 跳过表单提交 (避免触发频率限制)
         if solve_failed:
-            tracker.record("inject_token_and_submit", False, 0.0,
-                          "跳过 (solve_recaptcha 失败)")
-            tracker.record("verify_result", False, 0.0,
-                          "跳过 (solve_recaptcha 失败)")
+            tracker.record("inject_token_and_submit", False, 0.0, "跳过 (solve_recaptcha 失败)")
+            tracker.record("verify_result", False, 0.0, "跳过 (solve_recaptcha 失败)")
             return False
 
         t0 = time.perf_counter()
         try:
             await runtime.inject_token_and_submit(token)
-            tracker.record("inject_token_and_submit", True, time.perf_counter() - t0,
-                          "表单已提交")
+            tracker.record("inject_token_and_submit", True, time.perf_counter() - t0, "表单已提交")
         except Exception as e:
             tracker.record("inject_token_and_submit", False, time.perf_counter() - t0, str(e))
             await save_debug_info(runtime, runtime_name, "submit_failed")
@@ -297,8 +293,7 @@ async def test_runtime_e2e(runtime_name: str, tracker: StepTracker) -> bool:
             success = await runtime.verify_result()
             title = await runtime.page.title()
             url = runtime.page.url
-            tracker.record("verify_result", success, time.perf_counter() - t0,
-                          f"title='{title}', url={url[:60]}")
+            tracker.record("verify_result", success, time.perf_counter() - t0, f"title='{title}', url={url[:60]}")
             if not success:
                 await save_debug_info(runtime, runtime_name, "verify_failed")
             return success
@@ -336,7 +331,7 @@ async def main():
     for i, runtime_name in enumerate(selected):
         logger.info("")
         logger.info("#" * 70)
-        logger.info(f"#  [{i+1}/{len(selected)}] {runtime_name.upper()} E2E测试")
+        logger.info(f"#  [{i + 1}/{len(selected)}] {runtime_name.upper()} E2E测试")
         logger.info("#" * 70)
 
         # 运行前清理Chrome (第一条也清理, 确保干净起点)
@@ -359,9 +354,7 @@ async def main():
         full_chrome_cleanup()
 
     # 生成汇总报告
-    report_path = os.path.join(
-        REPORT_DIR, f"e2e_report_{time.strftime('%Y%m%d_%H%M%S')}.json"
-    )
+    report_path = os.path.join(REPORT_DIR, f"e2e_report_{time.strftime('%Y%m%d_%H%M%S')}.json")
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(all_results, f, ensure_ascii=False, indent=2)
 
@@ -374,9 +367,7 @@ async def main():
     logger.info("  " + "-" * 50)
     for r in all_results:
         status = "✅ 通过" if r["overall_success"] else "❌ 失败"
-        logger.info(
-            f"  {r['runtime']:<12} {status:<8} {r['steps_passed']:<10} {r['total_duration']:<10}"
-        )
+        logger.info(f"  {r['runtime']:<12} {status:<8} {r['steps_passed']:<10} {r['total_duration']:<10}")
 
     # 打印每条runtime的步骤详情
     for r in all_results:
@@ -386,9 +377,7 @@ async def main():
             if step_name in r["steps"]:
                 step_data = r["steps"][step_name]
                 icon = "✅" if step_data["success"] else "❌"
-                logger.info(
-                    f"    {icon} {step_name:<28} {step_data['duration']:<8} {step_data['detail']}"
-                )
+                logger.info(f"    {icon} {step_name:<28} {step_data['duration']:<8} {step_data['detail']}")
             else:
                 logger.info(f"    -- {step_name:<28} {'--':<8} (未执行)")
 

@@ -8,10 +8,10 @@ audio_solver.py 单元测试
 不依赖 faster-whisper / speech_recognition / 浏览器,
 可在无 ML 模型的环境中运行.
 """
+
 import pytest
 
 from audio_solver import AudioRecaptchaSolver
-
 
 # ============================================================
 # _extract_digits 测试
@@ -25,54 +25,69 @@ class TestExtractDigits:
     """测试数字提取逻辑"""
 
     # ---- 阿拉伯数字 ----
-    @pytest.mark.parametrize("text,expected", [
-        ("1 2 3 4 5", "12345"),
-        ("0", "0"),
-        ("9 8 7", "987"),
-        ("1, 2, 3", "123"),
-        ("1; 2; 3", "123"),
-    ])
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            ("1 2 3 4 5", "12345"),
+            ("0", "0"),
+            ("9 8 7", "987"),
+            ("1, 2, 3", "123"),
+            ("1; 2; 3", "123"),
+        ],
+    )
     def test_numeric_digits(self, text, expected):
         """纯阿拉伯数字"""
         assert _extract(None, text) == expected
 
     # ---- 英文单词 ----
-    @pytest.mark.parametrize("text,expected", [
-        ("one two three", "123"),
-        ("zero one two", "012"),
-        ("seven eight nine", "789"),
-        ("four five six", "456"),
-    ])
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            ("one two three", "123"),
+            ("zero one two", "012"),
+            ("seven eight nine", "789"),
+            ("four five six", "456"),
+        ],
+    )
     def test_english_words(self, text, expected):
         """英文数字单词"""
         assert _extract(None, text) == expected
 
     # ---- 序数词 ----
-    @pytest.mark.parametrize("text,expected", [
-        ("first second third", "123"),
-        ("fourth fifth sixth", "456"),
-        ("seventh eighth ninth", "789"),
-    ])
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            ("first second third", "123"),
+            ("fourth fifth sixth", "456"),
+            ("seventh eighth ninth", "789"),
+        ],
+    )
     def test_ordinal_words(self, text, expected):
         """英文序数词"""
         assert _extract(None, text) == expected
 
     # ---- 混合形式 ----
-    @pytest.mark.parametrize("text,expected", [
-        ("one 2 three", "123"),
-        ("first 2 3rd", "123"),
-        ("1st 2nd 3rd", "123"),
-    ])
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            ("one 2 three", "123"),
+            ("first 2 3rd", "123"),
+            ("1st 2nd 3rd", "123"),
+        ],
+    )
     def test_mixed_format(self, text, expected):
         """混合数字/单词/序数词"""
         assert _extract(None, text) == expected
 
     # ---- 大小写无关 ----
-    @pytest.mark.parametrize("text,expected", [
-        ("ONE TWO THREE", "123"),
-        ("One Two Three", "123"),
-        ("First Second Third", "123"),
-    ])
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            ("ONE TWO THREE", "123"),
+            ("One Two Three", "123"),
+            ("First Second Third", "123"),
+        ],
+    )
     def test_case_insensitive(self, text, expected):
         """大小写不影响识别"""
         assert _extract(None, text) == expected

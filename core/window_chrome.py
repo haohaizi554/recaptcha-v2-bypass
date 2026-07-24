@@ -24,8 +24,8 @@ from __future__ import annotations
 import ctypes
 import sys
 import weakref
+from collections.abc import Callable
 from ctypes import wintypes
-from typing import Callable
 
 from PyQt6.QtCore import QAbstractNativeEventFilter, QEvent, QPoint, Qt, QTimer
 from PyQt6.QtGui import QCursor
@@ -82,7 +82,7 @@ class _MSG(ctypes.Structure):
 class _ChromeNativeEventFilter(QAbstractNativeEventFilter):
     """将应用级 Windows 窗框事件转发给对应的 chrome controller。"""
 
-    def __init__(self, controller: "FramelessChromeController") -> None:
+    def __init__(self, controller: FramelessChromeController) -> None:
         super().__init__()
         self._controller_ref = weakref.ref(controller)
 
@@ -257,10 +257,7 @@ class FramelessChromeController:
 
     def mouse_press_event(self, event) -> bool:
         """处理鼠标按下: 如果在缩放边框区域则启动系统缩放"""
-        if (
-            event.button() == Qt.MouseButton.LeftButton
-            and self._start_system_resize(self._event_global_pos(event))
-        ):
+        if event.button() == Qt.MouseButton.LeftButton and self._start_system_resize(self._event_global_pos(event)):
             event.accept()
             return True
         return False
@@ -440,13 +437,9 @@ class FramelessChromeController:
             # 检测自动隐藏任务栏
             taskbar_edge = self._auto_hide_taskbar_edge(mon)
             if taskbar_edge is not None:
-                work_left, work_top, work_right, work_bottom = self._adjust_for_auto_hide(
-                    mon, work, taskbar_edge
-                )
+                work_left, work_top, work_right, work_bottom = self._adjust_for_auto_hide(mon, work, taskbar_edge)
             else:
-                work_left, work_top, work_right, work_bottom = (
-                    work.left, work.top, work.right, work.bottom
-                )
+                work_left, work_top, work_right, work_bottom = (work.left, work.top, work.right, work.bottom)
             min_max.ptMaxPosition.x = work_left - mon.left
             min_max.ptMaxPosition.y = work_top - mon.top
             min_max.ptMaxSize.x = max(1, work_right - work_left)
@@ -514,11 +507,14 @@ class FramelessChromeController:
             return fallback, fallback
         try:
             hwnd = int(self._windows_hwnd if self._windows_hwnd else self.host.winId())
-            user32 = ctypes.windll.user32
-            h_frame = max(fallback, self._system_metric(self.SM_CXSIZEFRAME, hwnd) +
-                          self._system_metric(self.SM_CXPADDEDBORDER, hwnd))
-            v_frame = max(fallback, self._system_metric(self.SM_CYSIZEFRAME, hwnd) +
-                          self._system_metric(self.SM_CXPADDEDBORDER, hwnd))
+            h_frame = max(
+                fallback,
+                self._system_metric(self.SM_CXSIZEFRAME, hwnd) + self._system_metric(self.SM_CXPADDEDBORDER, hwnd),
+            )
+            v_frame = max(
+                fallback,
+                self._system_metric(self.SM_CYSIZEFRAME, hwnd) + self._system_metric(self.SM_CXPADDEDBORDER, hwnd),
+            )
             return h_frame, v_frame
         except Exception:
             return fallback, fallback

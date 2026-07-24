@@ -13,7 +13,6 @@
 缺点: 需要下载模型 (~150MB base), 首次运行较慢
 """
 
-import asyncio
 import logging
 
 import config

@@ -18,7 +18,7 @@ import logging
 import os
 import sys
 
-from playwright.async_api import async_playwright, Page, BrowserContext
+from playwright.async_api import BrowserContext, Page, async_playwright
 from playwright_stealth import Stealth
 
 import config
@@ -113,7 +113,7 @@ class RecaptchaBypass:
                     success = await self._navigate_direct()
 
                 if not success:
-                    logger.warning(f"导航策略未到达登录页, 重试...")
+                    logger.warning("导航策略未到达登录页, 重试...")
                     continue
 
                 # 已到达登录页, 等待 reCAPTCHA 渲染
@@ -168,7 +168,12 @@ class RecaptchaBypass:
 
         if link_count == 0:
             # 回退到其他选择器
-            for selector in ["a[href*='successfactors']", "a[href*='career']", "button:has-text('Apply')", "a:has-text('Apply')"]:
+            for selector in [
+                "a[href*='successfactors']",
+                "a[href*='career']",
+                "button:has-text('Apply')",
+                "a:has-text('Apply')",
+            ]:
                 try:
                     loc = self.page.locator(selector)
                     if await loc.count() > 0:
@@ -209,7 +214,7 @@ class RecaptchaBypass:
             # 等待跳转到 SuccessFactors
             logger.info("等待跳转到 SuccessFactors 登录页...")
             reached_sf = False
-            for i in range(15):
+            for _i in range(15):
                 await asyncio.sleep(1)
                 current_url = self.page.url
                 if "successfactors" in current_url:
@@ -305,7 +310,7 @@ class RecaptchaBypass:
                     try:
                         checkbox = frame.locator(".recaptcha-checkbox-border")
                         if await checkbox.count() > 0:
-                            logger.info(f"reCAPTCHA 已完全渲染 (checkbox 元素已就绪, 第 {i+1}s)")
+                            logger.info(f"reCAPTCHA 已完全渲染 (checkbox 元素已就绪, 第 {i + 1}s)")
                             await self._take_screenshot("02_recaptcha_loaded")
 
                             # 打印所有 frame 用于调试
@@ -321,13 +326,13 @@ class RecaptchaBypass:
             try:
                 gtype = await self.page.evaluate("typeof grecaptcha")
                 if gtype != "undefined":
-                    logger.info(f"grecaptcha 对象已加载 (第 {i+1}s), 继续等待 iframe...")
+                    logger.info(f"grecaptcha 对象已加载 (第 {i + 1}s), 继续等待 iframe...")
             except Exception:
                 pass
 
             await asyncio.sleep(1)
             if (i + 1) % 5 == 0:
-                logger.info(f"等待 reCAPTCHA... (第 {i+1}/{timeout}s)")
+                logger.info(f"等待 reCAPTCHA... (第 {i + 1}/{timeout}s)")
 
         await self._take_screenshot("02_recaptcha_loaded")
         logger.warning(f"reCAPTCHA 渲染等待超时 ({timeout}s)")
@@ -410,6 +415,7 @@ class RecaptchaBypass:
     async def _solve_via_audio(self) -> None:
         """使用音频识别方式在浏览器内完成 reCAPTCHA"""
         from audio_solver import AudioRecaptchaSolver
+
         logger.info("使用音频识别方案求解 reCAPTCHA v2...")
         solver = AudioRecaptchaSolver(self.page)
         success = await solver.solve(max_retries=config.RECAPTCHA_MAX_RETRIES)
@@ -537,9 +543,13 @@ class RecaptchaBypass:
         if "Sign In" in title and "career" in current_url:
             # 优先检查账号错误信息 (说明表单已提交, reCAPTCHA 已通过)
             account_error_keywords = [
-                "invalid email", "invalid password", "incorrect",
-                "invalid login", "authentication failed",
-                "email address or password", "login failed",
+                "invalid email",
+                "invalid password",
+                "incorrect",
+                "invalid login",
+                "authentication failed",
+                "email address or password",
+                "login failed",
             ]
             for keyword in account_error_keywords:
                 if keyword in content_lower:

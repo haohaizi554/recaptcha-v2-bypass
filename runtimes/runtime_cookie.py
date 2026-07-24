@@ -47,10 +47,7 @@ class CookieRuntime(BaseBypassRuntime):
                 "请在 config.py 中设置 RECAPTCHA_ACCESSIBILITY_COOKIE "
                 "或在面板中输入 cookie 值"
             )
-            logger.info(
-                "[Cookie] 获取方式: 访问 "
-                "https://www.google.com/recaptcha/admin/accessibility 注册"
-            )
+            logger.info("[Cookie] 获取方式: 访问 https://www.google.com/recaptcha/admin/accessibility 注册")
             return
 
         logger.info("[Cookie] 设置 reCAPTCHA 无障碍 cookie...")
@@ -63,17 +60,19 @@ class CookieRuntime(BaseBypassRuntime):
             await asyncio.sleep(1)
 
             # 设置无障碍 cookie
-            await self.context.add_cookies([
-                {
-                    "name": "recaptcha-accessibility-cookie",
-                    "value": self.cookie_value,
-                    "domain": ".google.com",
-                    "path": "/",
-                    "httpOnly": True,
-                    "secure": True,
-                    "sameSite": "None",
-                }
-            ])
+            await self.context.add_cookies(
+                [
+                    {
+                        "name": "recaptcha-accessibility-cookie",
+                        "value": self.cookie_value,
+                        "domain": ".google.com",
+                        "path": "/",
+                        "httpOnly": True,
+                        "secure": True,
+                        "sameSite": "None",
+                    }
+                ]
+            )
 
             logger.info("[Cookie] 无障碍 cookie 已设置")
             await temp_page.close()
@@ -112,9 +111,7 @@ class CookieRuntime(BaseBypassRuntime):
                         logger.info("[Cookie] reCAPTCHA 已通过 (无障碍 cookie 生效)!")
                         return None
 
-                    logger.warning(
-                        "[Cookie] checkbox 未通过, 无障碍 cookie 可能已过期或无效"
-                    )
+                    logger.warning("[Cookie] checkbox 未通过, 无障碍 cookie 可能已过期或无效")
                 else:
                     logger.warning("[Cookie] 未找到 reCAPTCHA checkbox")
             else:
@@ -123,7 +120,4 @@ class CookieRuntime(BaseBypassRuntime):
             logger.warning(f"[Cookie] 点击 checkbox 失败: {e}")
 
         # 如果无障碍 cookie 未生效, 抛出异常
-        raise RuntimeError(
-            "[Cookie] 无障碍 cookie 方案失败, "
-            "cookie 可能已过期, 请重新获取"
-        )
+        raise RuntimeError("[Cookie] 无障碍 cookie 方案失败, cookie 可能已过期, 请重新获取")

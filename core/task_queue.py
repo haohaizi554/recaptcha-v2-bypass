@@ -17,16 +17,17 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from enum import IntEnum
-from typing import Callable
 
-from PyQt6.QtCore import QObject, QMutex, QThreadPool, pyqtSignal
+from PyQt6.QtCore import QMutex, QObject, QThreadPool, pyqtSignal
 
 logger = logging.getLogger("TaskQueue")
 
 
 class Priority(IntEnum):
     """任务优先级"""
+
     CRITICAL = 100
     HIGH = 50
     NORMAL = 0
@@ -35,6 +36,7 @@ class Priority(IntEnum):
 
 class TaskResult(QObject):
     """任务执行结果信号载体"""
+
     finished = pyqtSignal(object)  # result
     error = pyqtSignal(str)
 
@@ -65,6 +67,7 @@ class PriorityTaskQueue(QObject):
 
         # 根据 CPU 核心数设置线程池大小
         import os
+
         cpu = os.cpu_count() or 4
         self._pool.setMaxThreadCount(max(2, cpu - 2))
         logger.info(f"线程池: {self._pool.maxThreadCount()} 线程 (CPU={cpu})")
@@ -89,9 +92,7 @@ class PriorityTaskQueue(QObject):
                 if not self._in_backpressure:
                     self._in_backpressure = True
                     self.backpressure.emit()
-                    logger.warning(
-                        f"背压触发: pending={self._pending} >= {self._max_pending}"
-                    )
+                    logger.warning(f"背压触发: pending={self._pending} >= {self._max_pending}")
 
                 if priority < Priority.HIGH:
                     return False  # 拒绝低优先任务

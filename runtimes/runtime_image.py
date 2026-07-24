@@ -17,6 +17,7 @@
 # 否则 huggingface_hub 在 import 时读取环境变量, 后续设置无效
 # 模型已缓存在 ~/.cache/huggingface/hub/, 无需在线检查更新
 import os
+
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
@@ -24,7 +25,6 @@ import asyncio
 import logging
 import re
 import tempfile
-from typing import Optional
 
 import config
 from core.base_runtime import BaseBypassRuntime
@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 _has_pillow = False
 try:
     from PIL import Image
+
     _has_pillow = True
 except ImportError:
     pass
@@ -251,26 +252,62 @@ _GENERIC_NEGATIVES = [
 #   10:'Palm', 11:'Stairs', 12:'Traffic Light'}
 # ============================================================
 _RECAPTCHA_CLASSES = [
-    "bicycle", "bridge", "bus", "car", "chimney", "crosswalk",
-    "hydrant", "motorcycle", "mountain", "other", "palm", "stairs",
+    "bicycle",
+    "bridge",
+    "bus",
+    "car",
+    "chimney",
+    "crosswalk",
+    "hydrant",
+    "motorcycle",
+    "mountain",
+    "other",
+    "palm",
+    "stairs",
     "traffic",
 ]
 
 # reCAPTCHA 提示文本 → 13 类索引的映射 (支持模糊匹配)
 _RECAPTCHA_PROMPT_TO_CLASS = {
-    "bicycle": 0, "bicycles": 0, "bike": 0, "bikes": 0,
-    "bridge": 1, "bridges": 1,
-    "bus": 2, "buses": 2,
-    "car": 3, "cars": 3,
-    "chimney": 4, "chimneys": 4,
-    "crosswalk": 5, "crosswalks": 5, "pedestrian crossing": 5,
-    "hydrant": 6, "fire hydrant": 6, "fire hydrants": 6, "hydrants": 6,
-    "motorcycle": 7, "motorcycles": 7, "motorbike": 7, "motorbikes": 7,
-    "mountain": 8, "mountains": 8,
-    "palm": 10, "palms": 10, "palm tree": 10, "palm trees": 10,
-    "stairs": 11, "stair": 11, "staircase": 11, "step": 11, "steps": 11,
-    "traffic": 12, "traffic light": 12, "traffic lights": 12,
-    "stoplight": 12, "stoplights": 12,
+    "bicycle": 0,
+    "bicycles": 0,
+    "bike": 0,
+    "bikes": 0,
+    "bridge": 1,
+    "bridges": 1,
+    "bus": 2,
+    "buses": 2,
+    "car": 3,
+    "cars": 3,
+    "chimney": 4,
+    "chimneys": 4,
+    "crosswalk": 5,
+    "crosswalks": 5,
+    "pedestrian crossing": 5,
+    "hydrant": 6,
+    "fire hydrant": 6,
+    "fire hydrants": 6,
+    "hydrants": 6,
+    "motorcycle": 7,
+    "motorcycles": 7,
+    "motorbike": 7,
+    "motorbikes": 7,
+    "mountain": 8,
+    "mountains": 8,
+    "palm": 10,
+    "palms": 10,
+    "palm tree": 10,
+    "palm trees": 10,
+    "stairs": 11,
+    "stair": 11,
+    "staircase": 11,
+    "step": 11,
+    "steps": 11,
+    "traffic": 12,
+    "traffic light": 12,
+    "traffic lights": 12,
+    "stoplight": 12,
+    "stoplights": 12,
 }
 
 
@@ -339,7 +376,7 @@ def _build_prompts(target: str) -> tuple[list[str], list[str]]:
 class _CLIPClassifier:
     """
     CLIP 零样本图像分类器 (单例, 优化版)
-    
+
     优化点:
     - 批量推理: 所有 tile + 所有文本提示一次前向传播
     - GPU 自动检测: CUDA > MPS > CPU
@@ -355,7 +392,7 @@ class _CLIPClassifier:
         return cls._instance
 
     def __init__(self):
-        if hasattr(self, '_initialized'):
+        if hasattr(self, "_initialized"):
             return
         self._model = None
         self._processor = None
@@ -386,7 +423,7 @@ class _CLIPClassifier:
         """
         try:
             import torch
-            from transformers import CLIPProcessor, CLIPModel
+            from transformers import CLIPModel, CLIPProcessor
 
             # GPU 自动检测
             if torch.cuda.is_available():
@@ -438,28 +475,23 @@ class _CLIPClassifier:
             return True
 
         except ImportError:
-            logger.error(
-                "[Image] torch/transformers 未安装. "
-                "请运行: pip install torch transformers pillow"
-            )
+            logger.error("[Image] torch/transformers 未安装. 请运行: pip install torch transformers pillow")
             return False
         except Exception as e:
             logger.error(f"[Image] CLIP 模型加载失败: {e}", exc_info=True)
             return False
 
-    def classify_tiles(
-        self, tile_images: list, target: str
-    ) -> list[tuple[bool, float]]:
+    def classify_tiles(self, tile_images: list, target: str) -> list[tuple[bool, float]]:
         """
         批量零样本分类 (优化版)
-        
+
         所有 tile 和所有文本提示在单次前向传播中完成,
         取每个 tile 在所有正提示中的最大概率作为匹配分数.
-        
+
         参数:
             tile_images: PIL.Image 列表
             target: 挑战目标文本 (如 "traffic light")
-        
+
         返回: [(is_match, confidence), ...] 列表, 按原始顺序
         """
         if not self._loaded or not tile_images:
@@ -487,10 +519,7 @@ class _CLIPClassifier:
                 padding=True,
             )
             # 移到对应设备
-            inputs = {
-                k: v.to(self._device) if isinstance(v, torch.Tensor) else v
-                for k, v in inputs.items()
-            }
+            inputs = {k: v.to(self._device) if isinstance(v, torch.Tensor) else v for k, v in inputs.items()}
 
             with torch.no_grad():
                 outputs = self._model(**inputs)
@@ -511,10 +540,7 @@ class _CLIPClassifier:
                 score = match_scores[i].item()
                 is_match = score > threshold
                 results.append((is_match, score))
-                logger.info(
-                    f"[Image] Tile [{i}] score={score:.4f} "
-                    f"{'✓ MATCH' if is_match else '✗ skip'}"
-                )
+                logger.info(f"[Image] Tile [{i}] score={score:.4f} {'✓ MATCH' if is_match else '✗ skip'}")
 
             return results
 
@@ -522,23 +548,21 @@ class _CLIPClassifier:
             logger.error(f"[Image] 批量分类失败: {e}", exc_info=True)
             return [(False, 0.0)] * len(tile_images)
 
-    def classify_tiles_ranked(
-        self, tile_images: list, target: str, top_k: int = 3
-    ) -> list[tuple[bool, float]]:
+    def classify_tiles_ranked(self, tile_images: list, target: str, top_k: int = 3) -> list[tuple[bool, float]]:
         """
         排序模式: 选 top-K 个 tile (按置信度降序)
-        
+
         策略:
         1. 批量推理得到所有 tile 的分数
         2. 按分数降序排列
         3. 选 top_k 个, 但每个必须 >= IMAGE_MIN_CONFIDENCE
         4. 如果 top_k 中有低于阈值的, 不选它 (宁缺勿滥)
-        
+
         参数:
             tile_images: PIL.Image 列表
             target: 挑战目标文本
             top_k: 选前 K 个 tile
-        
+
         返回: [(is_match, confidence), ...]
         """
         results = self.classify_tiles(tile_images, target)
@@ -588,7 +612,7 @@ class _CLIPClassifier:
         # 尽力而为回退: 如果 top_score < min_conf, 所有 tile 都被过滤
         # 此时选至少 1 个最高分 tile (比什么都不选好, reCAPTCHA 允许试错)
         if not matched_indices and indexed:
-            best_idx = indexed[0][0]
+            indexed[0][0]
             best_score = indexed[0][1][1]
             # 放宽到 top_score * 0.5, 至少选 1 个, 最多选 2 个
             relaxed_floor = best_score * 0.5
@@ -639,10 +663,10 @@ class _YOLODetector:
         return cls._instance
 
     def __init__(self):
-        if hasattr(self, '_initialized'):
+        if hasattr(self, "_initialized"):
             return
-        self._cls_model = None    # 微调分类模型 (3x3)
-        self._seg_model = None    # 基础分割模型 (4x4)
+        self._cls_model = None  # 微调分类模型 (3x3)
+        self._seg_model = None  # 基础分割模型 (4x4)
         self._device = "cpu"
         self._cls_loaded = False
         self._seg_loaded = False
@@ -686,6 +710,7 @@ class _YOLODetector:
             # GPU 自动检测
             try:
                 import torch
+
                 if torch.cuda.is_available():
                     self._device = "cuda"
                     logger.info("[Image] YOLO 检测到 CUDA GPU, 使用 GPU 加速")
@@ -702,9 +727,7 @@ class _YOLODetector:
                 self._cls_model = YOLO(cls_path)
                 self._cls_class_names = self._cls_model.names
                 self._cls_loaded = True
-                logger.info(
-                    f"[Image] 分类模型加载完成, 类别: {self._cls_class_names}"
-                )
+                logger.info(f"[Image] 分类模型加载完成, 类别: {self._cls_class_names}")
             else:
                 logger.warning(f"[Image] 分类模型文件不存在: {cls_path}")
 
@@ -724,9 +747,7 @@ class _YOLODetector:
             logger.error(f"[Image] YOLO 模型加载失败: {e}", exc_info=True)
             return False
 
-    def classify_tiles(
-        self, tile_images: list, target: str
-    ) -> list[tuple[bool, float]] | None:
+    def classify_tiles(self, tile_images: list, target: str) -> list[tuple[bool, float]] | None:
         """
         用微调分类模型对每个 tile 独立分类 (3x3 挑战)
 
@@ -744,8 +765,6 @@ class _YOLODetector:
             return None
 
         try:
-            import numpy as np
-
             threshold = getattr(config, "YOLO_CLS_THRESHOLD", 0.2)
             imgsz = getattr(config, "YOLO_CLS_IMGSZ", 128)
 
@@ -756,9 +775,7 @@ class _YOLODetector:
                     tile_img = tile_img.convert("RGB")
 
                 # 运行分类推理
-                preds = self._cls_model.predict(
-                    tile_img, imgsz=imgsz, verbose=False
-                )
+                preds = self._cls_model.predict(tile_img, imgsz=imgsz, verbose=False)
 
                 if not preds or len(preds) == 0:
                     results.append((False, 0.0))
@@ -778,10 +795,7 @@ class _YOLODetector:
                 top1_name = self._cls_class_names.get(top1_idx, "?") if self._cls_class_names else "?"
                 target_name = self._cls_class_names.get(cls_idx, "?") if self._cls_class_names else "?"
                 top1_margin = getattr(config, "YOLO_CLS_TOP1_MARGIN", 0.08)
-                is_match = (
-                    target_prob > threshold
-                    and target_prob >= top1_prob - top1_margin
-                )
+                is_match = target_prob > threshold and target_prob >= top1_prob - top1_margin
 
                 results.append((is_match, target_prob))
                 logger.info(
@@ -799,9 +813,7 @@ class _YOLODetector:
             logger.error(f"[Image] CLS 分类失败: {e}", exc_info=True)
             return None
 
-    def classify_tiles_ranked(
-        self, tile_images: list, target: str, top_k: int = 4
-    ) -> list[tuple[bool, float]] | None:
+    def classify_tiles_ranked(self, tile_images: list, target: str, top_k: int = 4) -> list[tuple[bool, float]] | None:
         """
         用分类模型对 tile 做 ranking 选择 (用于 4x4 网格回退)
 
@@ -823,7 +835,7 @@ class _YOLODetector:
             return None
 
         try:
-            threshold = getattr(config, "YOLO_CLS_THRESHOLD", 0.15)
+            getattr(config, "YOLO_CLS_THRESHOLD", 0.15)
             imgsz = getattr(config, "YOLO_CLS_IMGSZ", 224)
             rank_gap = getattr(config, "YOLO_CLS_RANK_GAP", 0.15)
             rank_min = getattr(config, "YOLO_CLS_RANK_MIN", 0.03)
@@ -834,9 +846,7 @@ class _YOLODetector:
                 if tile_img.mode != "RGB":
                     tile_img = tile_img.convert("RGB")
 
-                preds = self._cls_model.predict(
-                    tile_img, imgsz=imgsz, verbose=False
-                )
+                preds = self._cls_model.predict(tile_img, imgsz=imgsz, verbose=False)
 
                 if not preds or len(preds) == 0 or preds[0].probs is None:
                     tile_probs.append((i, 0.0))
@@ -872,7 +882,7 @@ class _YOLODetector:
             best_effort_threshold = 0.05  # 低于此值视为模型无信号, 不选任何 tile
             if not selected_indices and tile_probs and top_score >= best_effort_threshold:
                 relaxed_floor = top_score * 0.5
-                for idx, prob in tile_probs[:min(2, top_k)]:
+                for idx, prob in tile_probs[: min(2, top_k)]:
                     if prob >= relaxed_floor:
                         selected_indices.add(idx)
                 logger.warning(
@@ -886,10 +896,7 @@ class _YOLODetector:
                 )
 
             results = [
-                (i in selected_indices, prob)
-                for i, (_, prob) in enumerate(
-                    sorted(tile_probs, key=lambda x: x[0])
-                )
+                (i in selected_indices, prob) for i, (_, prob) in enumerate(sorted(tile_probs, key=lambda x: x[0]))
             ]
 
             match_count = sum(1 for m, _ in results if m)
@@ -928,8 +935,8 @@ class _YOLODetector:
             return None
 
         try:
-            import numpy as np
             import cv2
+            import numpy as np
 
             # 多尺度检测参数
             conf_threshold = getattr(config, "YOLO_SEG_CONFIDENCE", 0.25)
@@ -1008,19 +1015,20 @@ class _YOLODetector:
                 target_detections = []
                 for i, cls_id in enumerate(boxes_cls):
                     if int(cls_id) == coco_id:
-                        target_detections.append({
-                            "conf": float(boxes_conf[i]),
-                            "box_idx": i,
-                            "mask_idx": i if has_masks else None,
-                        })
+                        target_detections.append(
+                            {
+                                "conf": float(boxes_conf[i]),
+                                "box_idx": i,
+                                "mask_idx": i if has_masks else None,
+                            }
+                        )
 
                 if not target_detections:
                     continue
 
                 total_target_detections += len(target_detections)
                 logger.info(
-                    f"[Image] SEG imgsz={scale_imgsz}: 检测到 {len(target_detections)} 个目标 "
-                    f"(COCO ID={coco_id})"
+                    f"[Image] SEG imgsz={scale_imgsz}: 检测到 {len(target_detections)} 个目标 (COCO ID={coco_id})"
                 )
 
                 # ETH 方案: 用掩码多边形填充, 检查任意像素重叠
@@ -1067,9 +1075,7 @@ class _YOLODetector:
                                             check_mask = cell_mask
                                         if np.any(check_mask > 0):
                                             cell_selected[cell_idx] = True
-                                            cell_confidence[cell_idx] = max(
-                                                cell_confidence[cell_idx], conf
-                                            )
+                                            cell_confidence[cell_idx] = max(cell_confidence[cell_idx], conf)
                                             logger.info(
                                                 f"[Image] SEG 掩码选中 cell[{row},{col}] "
                                                 f"(any overlap={overlap:.2%}, conf={conf:.2f})"
@@ -1092,9 +1098,7 @@ class _YOLODetector:
                                         overlap = np.count_nonzero(check_mask > 0) / (check_total + 1e-6)
                                         if overlap > overlap_threshold:
                                             cell_selected[cell_idx] = True
-                                            cell_confidence[cell_idx] = max(
-                                                cell_confidence[cell_idx], conf
-                                            )
+                                            cell_confidence[cell_idx] = max(cell_confidence[cell_idx], conf)
                                             logger.info(
                                                 f"[Image] SEG 掩码选中 cell[{row},{col}] "
                                                 f"(overlap={overlap:.2%}, conf={conf:.2f})"
@@ -1118,22 +1122,16 @@ class _YOLODetector:
 
                                 if ox1 < ox2 and oy1 < oy2:
                                     cell_selected[cell_idx] = True
-                                    cell_confidence[cell_idx] = max(
-                                        cell_confidence[cell_idx], conf
-                                    )
+                                    cell_confidence[cell_idx] = max(cell_confidence[cell_idx], conf)
 
             if total_target_detections == 0:
                 logger.info("[Image] SEG 多尺度合并后仍无目标检测")
                 return [(False, 0.0)] * n_cells
 
-            results_list = [
-                (cell_selected[i], cell_confidence[i])
-                for i in range(n_cells)
-            ]
+            results_list = [(cell_selected[i], cell_confidence[i]) for i in range(n_cells)]
             selected_count = sum(1 for s, _ in results_list if s)
             logger.info(
-                f"[Image] SEG 结果: {selected_count}/{n_cells} 个网格被选中 "
-                f"(总检测数={total_target_detections})"
+                f"[Image] SEG 结果: {selected_count}/{n_cells} 个网格被选中 (总检测数={total_target_detections})"
             )
             return results_list
 
@@ -1190,8 +1188,7 @@ class ImageRuntime(BaseBypassRuntime):
             logger.warning("[Image] CLIP 加载失败")
             if not yolo_ok:
                 raise RuntimeError(
-                    "[Image] YOLO 和 CLIP 均不可用, 请运行: "
-                    "pip install ultralytics torch transformers pillow"
+                    "[Image] YOLO 和 CLIP 均不可用, 请运行: pip install ultralytics torch transformers pillow"
                 )
 
         max_retries = config.RECAPTCHA_MAX_RETRIES
@@ -1249,9 +1246,7 @@ class ImageRuntime(BaseBypassRuntime):
                 return True
             logger.warning("[Image] 无法截取图像 tiles")
             return False
-        logger.info(
-            f"[Image] 截取 {len(tile_images)} 个 tiles (网格: {grid_size[0]}x{grid_size[1]})"
-        )
+        logger.info(f"[Image] 截取 {len(tile_images)} 个 tiles (网格: {grid_size[0]}x{grid_size[1]})")
 
         # Step 6: 三引擎分类 (CLS for 3x3/32-tile, SEG for 4x4, CLIP fallback)
         match_results = None
@@ -1259,7 +1254,6 @@ class ImageRuntime(BaseBypassRuntime):
         is_4x4 = (n_tiles == 16) or (grid_size[0] == 4 and grid_size[1] == 4)
         # CLS 适用于所有非 4x4 挑战, 以及 4x4 中 SEG 失败后的回退
         cls_available = self._yolo_detector.cls_loaded and _YOLODetector.can_handle_cls(prompt_text)
-        use_cls = (not is_4x4) and cls_available
 
         # 引擎 1: YOLOv8-seg 分割 (仅 4x4 挑战, COCO 类别)
         if is_4x4 and self._yolo_detector.seg_loaded and _YOLODetector.can_handle_seg(prompt_text) and table_path:
@@ -1320,9 +1314,7 @@ class ImageRuntime(BaseBypassRuntime):
                 expected_matches = getattr(config, "IMAGE_TOP_K_3X3", 3)
             else:
                 expected_matches = max(2, n_tiles // 3)
-            match_results = self._classifier.classify_tiles_ranked(
-                tile_images, prompt_text, top_k=expected_matches
-            )
+            match_results = self._classifier.classify_tiles_ranked(tile_images, prompt_text, top_k=expected_matches)
 
             match_count = sum(1 for m, _ in match_results if m)
             if match_count == 0:
@@ -1336,9 +1328,7 @@ class ImageRuntime(BaseBypassRuntime):
                     scored = [(i, raw_results[i][1]) for i in matched_indices]
                     scored.sort(key=lambda x: x[1], reverse=True)
                     keep = set(idx for idx, _ in scored[:expected_matches])
-                    match_results = [
-                        (i in keep, raw_results[i][1]) for i in range(len(raw_results))
-                    ]
+                    match_results = [(i in keep, raw_results[i][1]) for i in range(len(raw_results))]
                 else:
                     match_results = raw_results
                 match_count = sum(1 for m, _ in match_results if m)
@@ -1381,9 +1371,7 @@ class ImageRuntime(BaseBypassRuntime):
         await self._restore_bframe_style()
         return False
 
-    async def _handle_additional_challenge(
-        self, bframe, original_prompt: str
-    ) -> bool:
+    async def _handle_additional_challenge(self, bframe, original_prompt: str) -> bool:
         """处理多轮挑战 (reCAPTCHA 有时要求连续完成 2-3 轮)"""
         for round_num in range(3):
             # 防御: 页面已关闭 (验证通过后页面可能已导航走)
@@ -1476,13 +1464,9 @@ class ImageRuntime(BaseBypassRuntime):
             if results is None:
                 logger.info(f"[Image] 第 {round_num + 1} 轮: CLIP 引擎")
                 expected = (
-                    getattr(config, "IMAGE_TOP_K_4X4", 4)
-                    if n_tiles >= 16
-                    else getattr(config, "IMAGE_TOP_K_3X3", 3)
+                    getattr(config, "IMAGE_TOP_K_4X4", 4) if n_tiles >= 16 else getattr(config, "IMAGE_TOP_K_3X3", 3)
                 )
-                results = self._classifier.classify_tiles_ranked(
-                    tile_images, prompt_text, top_k=expected
-                )
+                results = self._classifier.classify_tiles_ranked(tile_images, prompt_text, top_k=expected)
                 if sum(1 for m, _ in results if m) == 0:
                     raw = self._classifier.classify_tiles(tile_images, prompt_text)
                     matched_idx = [i for i, (m, _) in enumerate(raw) if m]
@@ -1584,7 +1568,7 @@ class ImageRuntime(BaseBypassRuntime):
             prompt_el = bframe.locator(".rc-imageselect-instructions")
             if await prompt_el.count() > 0:
                 raw_text = await prompt_el.first.inner_text()
-                
+
                 # 规范化: 将换行和多余空格合并为单个空格
                 # reCAPTCHA 常将 "with a\ncar" 分行显示, 导致前缀匹配失败
                 normalized = re.sub(r"\s+", " ", raw_text).strip().lower()
@@ -1606,7 +1590,7 @@ class ImageRuntime(BaseBypassRuntime):
                 for prefix in prefixes:
                     if normalized.startswith(prefix):
                         # 取前缀之后的文本 (用规范化后的文本提取)
-                        target = normalized[len(prefix):].strip()
+                        target = normalized[len(prefix) :].strip()
                         # 去掉 "if there are none, click skip" 后缀 (reCAPTCHA 常见指令)
                         target = re.sub(
                             r"\s*if there are none,?\s*click skip.*$",
@@ -1638,13 +1622,13 @@ class ImageRuntime(BaseBypassRuntime):
     async def _capture_tiles(self, bframe) -> tuple[list, tuple[int, int], str | None]:
         """
         截取挑战图片并切分为 tiles (优化版)
-        
+
         优化: 只截一次全图, 用 PIL 裁剪各 tile
         - 消除逐 tile screenshot 导致的多次闪屏
         - 避免 element not stable 超时
         - 速度更快 (1 次 screenshot vs N 次)
         - 同时返回完整表格截图路径 (供 YOLO 使用)
-        
+
         返回: (tile_images, (rows, cols), table_path)
         """
         tiles = []
@@ -1694,7 +1678,7 @@ class ImageRuntime(BaseBypassRuntime):
             elif tile_count == 28:
                 grid_size = (4, 7)
             else:
-                side = int(tile_count ** 0.5)
+                side = int(tile_count**0.5)
                 if side * side == tile_count:
                     grid_size = (side, side)
                 elif tile_count % 4 == 0:
@@ -1784,7 +1768,7 @@ class ImageRuntime(BaseBypassRuntime):
                 # 即使 Playwright 内部 CDP 调用无法取消, asyncio.wait_for 也会在 3s 后
                 # 抛出 TimeoutError, 让 fallback 立即执行 (避免 30s 卡死)
                 try:
-                    target_el = bframe.locator('.rc-imageselect-target')
+                    target_el = bframe.locator(".rc-imageselect-target")
                     try:
                         await asyncio.wait_for(
                             target_el.screenshot(
@@ -1794,8 +1778,8 @@ class ImageRuntime(BaseBypassRuntime):
                             ),
                             timeout=3.0,
                         )
-                    except asyncio.TimeoutError:
-                        raise Exception("asyncio.wait_for 超时 (3s), Playwright screenshot 可能仍在后台运行")
+                    except TimeoutError:
+                        raise Exception("asyncio.wait_for 超时 (3s), Playwright screenshot 可能仍在后台运行") from None
                     screenshot_ok = True
                     screenshot_method = "frame_screenshot"
                     screenshot_scale = 1.0  # Playwright frame 截图 = CSS 像素
@@ -1853,17 +1837,21 @@ class ImageRuntime(BaseBypassRuntime):
                                 try:
                                     await asyncio.wait_for(
                                         self.page.screenshot(
-                                            path=table_path, timeout=2000,
-                                            animations="disabled", caret="hide",
+                                            path=table_path,
+                                            timeout=2000,
+                                            animations="disabled",
+                                            caret="hide",
                                             clip={
-                                                "x": page_x, "y": page_y,
-                                                "width": tbl["width"], "height": tbl["height"],
+                                                "x": page_x,
+                                                "y": page_y,
+                                                "width": tbl["width"],
+                                                "height": tbl["height"],
                                             },
                                         ),
                                         timeout=3.0,
                                     )
-                                except asyncio.TimeoutError:
-                                    raise Exception("asyncio.wait_for 超时 (3s), page.screenshot(clip)")
+                                except TimeoutError:
+                                    raise Exception("asyncio.wait_for 超时 (3s), page.screenshot(clip)") from None
                                 screenshot_ok = True
                                 screenshot_method = "page_clip"
                                 screenshot_scale = 1.0  # Playwright page 截图 = CSS 像素
@@ -1874,8 +1862,7 @@ class ImageRuntime(BaseBypassRuntime):
                                 )
                             else:
                                 logger.warning(
-                                    f"[Image] page.screenshot(clip) 跳过: "
-                                    f"坐标为负 ({page_x:.0f},{page_y:.0f})"
+                                    f"[Image] page.screenshot(clip) 跳过: 坐标为负 ({page_x:.0f},{page_y:.0f})"
                                 )
                     except Exception as e_clip:
                         logger.warning(f"[Image] page.screenshot(clip) 失败: {e_clip}")
@@ -1892,13 +1879,16 @@ class ImageRuntime(BaseBypassRuntime):
                         try:
                             await asyncio.wait_for(
                                 self.page.screenshot(
-                                    path=full_page_path, timeout=2000, full_page=False,
-                                    animations="disabled", caret="hide",
+                                    path=full_page_path,
+                                    timeout=2000,
+                                    full_page=False,
+                                    animations="disabled",
+                                    caret="hide",
                                 ),
                                 timeout=3.0,
                             )
-                        except asyncio.TimeoutError:
-                            raise Exception("asyncio.wait_for 超时 (3s), 全页截图")
+                        except TimeoutError:
+                            raise Exception("asyncio.wait_for 超时 (3s), 全页截图") from None
                         # 使用 PIL 从全页截图中裁剪表格区域
                         iframe_offset = await self.page.evaluate(
                             """() => {
@@ -1929,8 +1919,7 @@ class ImageRuntime(BaseBypassRuntime):
                             screenshot_scale = 1.0  # Playwright 全页截图 = CSS 像素
                             table_box = tbl
                             logger.warning(
-                                f"[Image] 全页截图裁剪成功 (兜底): "
-                                f"crop=({crop_x},{crop_y},{crop_w}x{crop_h})"
+                                f"[Image] 全页截图裁剪成功 (兜底): crop=({crop_x},{crop_y},{crop_w}x{crop_h})"
                             )
                     except Exception as e3:
                         logger.warning(f"[Image] 全页截图也失败: {e3}")
@@ -1978,6 +1967,7 @@ class ImageRuntime(BaseBypassRuntime):
                         dpi = win_info.get("devicePixelRatio", 1.5)
                         try:
                             import ctypes
+
                             # GetDpiForSystem() 返回系统 DPI (96=100%, 144=150%)
                             # 在 Windows 10 1607+ 可用
                             user32 = ctypes.windll.user32
@@ -2006,21 +1996,26 @@ class ImageRuntime(BaseBypassRuntime):
                         # 减去视口物理高度得到纯 Chrome UI 高度
                         try:
                             import win32gui
+
                             # 查找 Chrome 主窗口 (与 Native runtime 相同的过滤逻辑)
                             chrome_hwnd = None
+
                             def _enum_chrome(hwnd, _):
                                 nonlocal chrome_hwnd
                                 try:
                                     import win32process
+
                                     _, pid = win32process.GetWindowThreadProcessId(hwnd)
                                     cls = win32gui.GetClassName(hwnd)
                                     if cls == "Chrome_WidgetWin_1":
                                         import subprocess
+
                                         try:
                                             p = subprocess.run(
-                                                ["wmic", "process", "where", f"ProcessId={pid}",
-                                                 "get", "Name"],
-                                                capture_output=True, text=True, timeout=3,
+                                                ["wmic", "process", "where", f"ProcessId={pid}", "get", "Name"],
+                                                capture_output=True,
+                                                text=True,
+                                                timeout=3,
                                             )
                                             if "chrome.exe" in p.stdout:
                                                 chrome_hwnd = hwnd
@@ -2028,6 +2023,7 @@ class ImageRuntime(BaseBypassRuntime):
                                             pass
                                 except Exception:
                                     pass
+
                             win32gui.EnumWindows(_enum_chrome, None)
                             if chrome_hwnd:
                                 _, _, cw, ch = win32gui.GetClientRect(chrome_hwnd)
@@ -2079,6 +2075,7 @@ class ImageRuntime(BaseBypassRuntime):
 
                         # 使用 PIL.ImageGrab 直接从屏幕捕获
                         from PIL import ImageGrab
+
                         bbox = (phys_x, phys_y, phys_x + phys_w, phys_y + phys_h)
                         os_img = ImageGrab.grab(bbox=bbox)
 
@@ -2109,7 +2106,9 @@ class ImageRuntime(BaseBypassRuntime):
                     return [], grid_size, None
                 try:
                     await self.page.screenshot(
-                        path=table_path, timeout=3000, full_page=False,
+                        path=table_path,
+                        timeout=3000,
+                        full_page=False,
                         caret="hide",
                     )
                     screenshot_ok = True
@@ -2129,13 +2128,11 @@ class ImageRuntime(BaseBypassRuntime):
 
             # 截图内容验证: 检查图像是否有足够方差 (排除空白/stale 截图)
             import numpy as np
+
             img_array = np.array(table_img)
             pixel_std = float(img_array.std())
             if pixel_std < 5.0:
-                logger.warning(
-                    f"[Image] 截图内容疑似空白 (std={pixel_std:.2f} < 5.0), "
-                    f"可能捕获到错误区域, 放弃本轮"
-                )
+                logger.warning(f"[Image] 截图内容疑似空白 (std={pixel_std:.2f} < 5.0), 可能捕获到错误区域, 放弃本轮")
                 return [], grid_size, None
             logger.info(f"[Image] 截图内容验证通过 (std={pixel_std:.2f})")
 
@@ -2147,8 +2144,7 @@ class ImageRuntime(BaseBypassRuntime):
             # 直接比较会导致误判。切换时重置 stale_count 和上一轮数组。
             if self._last_screenshot_method is not None and self._last_screenshot_method != screenshot_method:
                 logger.info(
-                    f"[Image] 截图方法切换: {self._last_screenshot_method} → {screenshot_method}, "
-                    f"重置陈旧检测基准"
+                    f"[Image] 截图方法切换: {self._last_screenshot_method} → {screenshot_method}, 重置陈旧检测基准"
                 )
                 self._stale_count = 0
                 self._last_table_array = None  # 不同方法/分辨率的截图不可比较
@@ -2223,10 +2219,9 @@ class ImageRuntime(BaseBypassRuntime):
             # 保存调试截图 (复用已有截图, 不额外截图)
             if config.SAVE_SCREENSHOTS:
                 import shutil
+
                 self._capture_seq += 1
-                debug_path = os.path.join(
-                    self.screenshot_dir, f"image_challenge_{tile_count}.png"
-                )
+                debug_path = os.path.join(self.screenshot_dir, f"image_challenge_{tile_count}.png")
                 shutil.copy2(table_path, debug_path)
                 seq_debug_path = os.path.join(
                     self.screenshot_dir,
@@ -2251,9 +2246,7 @@ class ImageRuntime(BaseBypassRuntime):
             tiles = []
             for row in range(rows):
                 for col in range(cols):
-                    tile = img.crop(
-                        (int(col * tw), int(row * th), int((col + 1) * tw), int((row + 1) * th))
-                    )
+                    tile = img.crop((int(col * tw), int(row * th), int((col + 1) * tw), int((row + 1) * th)))
                     tiles.append(tile)
             return tiles
         except Exception as e:
@@ -2302,9 +2295,7 @@ class ImageRuntime(BaseBypassRuntime):
         try:
             verify_btn = bframe.locator("#recaptcha-verify-button")
             button_text = (await verify_btn.inner_text(timeout=2000)).strip()
-            logger.info(
-                f"[Image] 验证按钮文本: '{button_text}', clicked={clicked_count}"
-            )
+            logger.info(f"[Image] 验证按钮文本: '{button_text}', clicked={clicked_count}")
             if button_text.lower() == "skip" and clicked_count <= 0:
                 logger.warning("[Image] 按钮为 Skip 且未选择 tile, 不点击")
                 return False
@@ -2327,10 +2318,7 @@ class ImageRuntime(BaseBypassRuntime):
                     }""",
                     clicked_count,
                 )
-                logger.info(
-                    f"[Image] JS 验证按钮结果: ok={clicked.get('ok')} "
-                    f"text='{clicked.get('text')}'"
-                )
+                logger.info(f"[Image] JS 验证按钮结果: ok={clicked.get('ok')} text='{clicked.get('text')}'")
                 return bool(clicked.get("ok"))
             except Exception as e2:
                 logger.warning(f"[Image] JS 点击验证也失败: {e2}")

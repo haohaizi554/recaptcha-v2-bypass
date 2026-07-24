@@ -190,17 +190,13 @@ async def _save_debug_info(runtime, route_name: str):
     """保存调试信息: 截图 + 页面 HTML"""
     try:
         # 截图
-        screenshot_path = os.path.join(
-            PROJECT_ROOT, "screenshots", f"route_{route_name}_debug.png"
-        )
+        screenshot_path = os.path.join(PROJECT_ROOT, "screenshots", f"route_{route_name}_debug.png")
         await runtime.page.screenshot(path=screenshot_path, animations="disabled")
         logger.info(f"调试截图已保存: {screenshot_path}")
 
         # 页面 HTML
         html = await runtime.page.content()
-        html_path = os.path.join(
-            PROJECT_ROOT, "screenshots", f"route_{route_name}_debug.html"
-        )
+        html_path = os.path.join(PROJECT_ROOT, "screenshots", f"route_{route_name}_debug.html")
         with open(html_path, "w", encoding="utf-8") as f:
             f.write(html)
         logger.info(f"调试 HTML 已保存: {html_path}")

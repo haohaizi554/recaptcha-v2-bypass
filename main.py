@@ -25,8 +25,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import config
 from solutions import (
-    SOLUTIONS,
     SOLUTION_COUNT,
+    SOLUTIONS,
     check_solution_deps,
     get_solution,
 )
@@ -105,7 +105,6 @@ def run_check():
         key = sol["key"]
         ok, missing = check_solution_deps(key)
         status_icon = "✓" if ok else "✗"
-        status_color = "" if ok else ""
         print(f"  {status_icon} {sol['name']} ({key})")
         if ok:
             print(f"      依赖完整: {', '.join(sol.get('deps', []))}")
@@ -129,7 +128,7 @@ def run_list():
     _print_banner()
     print("  方案列表:")
     print()
-    for i, sol in enumerate(SOLUTIONS, 1):
+    for _i, sol in enumerate(SOLUTIONS, 1):
         print(f"  {sol['cli_icon']} {sol['key']:12s} {sol['name']}")
         print(f"                {sol['short_desc']}")
         print(f"                费用: {sol['cost']} | 状态: {sol['status']}")
@@ -142,6 +141,7 @@ def run_list():
 # ============================================================
 def _launch_audio():
     from runtimes.runtime_audio import AudioRuntime
+
     return AudioRuntime()
 
 
@@ -165,11 +165,13 @@ def _launch_api():
         return None
 
     from runtimes.runtime_api import APIRuntime
+
     return APIRuntime(provider=provider)
 
 
 def _launch_image():
     from runtimes.runtime_image import ImageRuntime
+
     return ImageRuntime()
 
 
@@ -186,6 +188,7 @@ def _launch_cookie():
         use_default = input("  使用 config.py 中的 cookie? (Y/n): ").strip().lower()
         if use_default != "n":
             from runtimes.runtime_cookie import CookieRuntime
+
             return CookieRuntime()
 
     cookie_value = input("  请输入 cookie 值 (或按回车返回): ").strip()
@@ -194,6 +197,7 @@ def _launch_cookie():
         return None
 
     from runtimes.runtime_cookie import CookieRuntime
+
     return CookieRuntime(cookie_value=cookie_value)
 
 
@@ -217,11 +221,13 @@ def _launch_extension():
         ext_path = custom_path
 
     from runtimes.runtime_extension import ExtensionRuntime
+
     return ExtensionRuntime(extension_path=ext_path)
 
 
 def _launch_native():
     from runtimes.runtime_native import NativeRuntime
+
     return NativeRuntime()
 
 
@@ -367,8 +373,9 @@ def run_method(key: str):
 def run_gui():
     """启动 GUI 模式"""
     try:
-        from PyQt6.QtWidgets import QApplication
         from PyQt6.QtGui import QFont, QIcon
+        from PyQt6.QtWidgets import QApplication
+
         import gui as gui_module
     except ImportError as e:
         print(f"  [错误] GUI 依赖缺失: {e}")
@@ -418,7 +425,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="启动 GUI (默认行为)",
     )
     parser.add_argument(
-        "-m", "--method",
+        "-m",
+        "--method",
         metavar="KEY",
         choices=[s["key"] for s in SOLUTIONS],
         help=f"直接启动指定方案 (key: {', '.join(s['key'] for s in SOLUTIONS)})",

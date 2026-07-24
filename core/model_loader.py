@@ -76,6 +76,7 @@ class ModelLoader(QThread):
         self.progress.emit("正在加载 torch...")
         t0 = time.perf_counter()
         import torch
+
         self._cache["torch"] = torch
         elapsed = time.perf_counter() - t0
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -88,6 +89,7 @@ class ModelLoader(QThread):
         self.progress.emit("正在加载 transformers...")
         t0 = time.perf_counter()
         import transformers
+
         self._cache["transformers"] = transformers
         elapsed = time.perf_counter() - t0
         logger.info(f"transformers 加载完成 ({elapsed:.1f}s)")
@@ -99,6 +101,7 @@ class ModelLoader(QThread):
         self.progress.emit("正在加载 ultralytics...")
         t0 = time.perf_counter()
         import ultralytics
+
         self._cache["ultralytics"] = ultralytics
         elapsed = time.perf_counter() - t0
         logger.info(f"ultralytics 加载完成 ({elapsed:.1f}s)")
@@ -115,6 +118,7 @@ class ModelLoader(QThread):
             if cls_path and os.path.exists(cls_path):
                 self.progress.emit("正在加载 YOLOv8-cls 模型...")
                 from ultralytics import YOLO
+
                 self._cache["yolo_cls"] = YOLO(cls_path)
                 logger.info("YOLOv8-cls 模型预加载完成")
 
@@ -123,6 +127,7 @@ class ModelLoader(QThread):
             if os.path.exists(seg_path):
                 self.progress.emit("正在加载 YOLOv8-seg 模型...")
                 from ultralytics import YOLO
+
                 self._cache["yolo_seg"] = YOLO(seg_path)
                 logger.info("YOLOv8-seg 模型预加载完成")
 

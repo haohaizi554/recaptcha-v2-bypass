@@ -24,11 +24,10 @@ from __future__ import annotations
 import logging
 import os
 import sqlite3
-import time
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
-from PyQt6.QtCore import QSettings, QMutex, QObject, pyqtSignal
+from PyQt6.QtCore import QMutex, QObject, QSettings, pyqtSignal
 
 logger = logging.getLogger("Persistence")
 
@@ -61,7 +60,7 @@ class PersistenceManager(QObject):
         super().__init__(parent)
         self._settings = QSettings("ApplyKitty", "reCAPTCHABypass", self)
         self._db_mutex = QMutex()
-        self._db: Optional[sqlite3.Connection] = None
+        self._db: sqlite3.Connection | None = None
         self._init_db()
 
     # ========================================================
@@ -74,7 +73,7 @@ class PersistenceManager(QObject):
             self._db = sqlite3.connect(
                 _DB_PATH,
                 check_same_thread=False,  # 允许跨线程访问 (由 _db_mutex 保护)
-                isolation_level=None,     # 自动提交模式
+                isolation_level=None,  # 自动提交模式
             )
             self._db.execute("PRAGMA journal_mode=WAL")  # WAL 模式: 读写不互斥
             self._db.execute("PRAGMA synchronous=NORMAL")  # 平衡安全与性能
@@ -165,8 +164,7 @@ class PersistenceManager(QObject):
         self._db_mutex.lock()
         try:
             self._db.execute(
-                "INSERT INTO run_history (method, success, duration_s, timestamp, detail) "
-                "VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO run_history (method, success, duration_s, timestamp, detail) VALUES (?, ?, ?, ?, ?)",
                 (method, 1 if success else 0, round(duration, 2), ts, detail),
             )
         except Exception as e:
@@ -190,8 +188,7 @@ class PersistenceManager(QObject):
         self._db_mutex.lock()
         try:
             cursor = self._db.execute(
-                "SELECT method, success, duration_s, timestamp, detail "
-                "FROM run_history ORDER BY id DESC LIMIT ?",
+                "SELECT method, success, duration_s, timestamp, detail FROM run_history ORDER BY id DESC LIMIT ?",
                 (limit,),
             )
             rows = cursor.fetchall()
@@ -235,9 +232,7 @@ class PersistenceManager(QObject):
         self._db_mutex.lock()
         try:
             # 总体统计
-            row = self._db.execute(
-                "SELECT COUNT(*), SUM(success), AVG(duration_s) FROM run_history"
-            ).fetchone()
+            row = self._db.execute("SELECT COUNT(*), SUM(success), AVG(duration_s) FROM run_history").fetchone()
             total = row[0] or 0
             success = row[1] or 0
             avg_dur = row[2] or 0.0
@@ -245,8 +240,7 @@ class PersistenceManager(QObject):
             # 按方案分组
             by_method: dict[str, dict] = {}
             for m_row in self._db.execute(
-                "SELECT method, COUNT(*), SUM(success), AVG(duration_s) "
-                "FROM run_history GROUP BY method"
+                "SELECT method, COUNT(*), SUM(success), AVG(duration_s) FROM run_history GROUP BY method"
             ).fetchall():
                 m_name = m_row[0]
                 by_method[m_name] = {

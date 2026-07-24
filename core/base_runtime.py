@@ -18,7 +18,7 @@ import json
 import logging
 import os
 
-from playwright.async_api import async_playwright, Page, BrowserContext
+from playwright.async_api import BrowserContext, Page, async_playwright
 from playwright_stealth import Stealth
 
 import config
@@ -51,14 +51,14 @@ class BaseBypassRuntime:
         ".profileWidget a[onclick*='handleViewProfileAction']",
         # 通用 profileWidget 选择器 (兜底)
         ".profileWidget a",
-        "a.loggedInStatus",                    # 旧版 class
-        "a:has-text('Sign In')",              # 英文
-        "a:has-text('Login')",                # 英文变体
-        "a:has-text('登入')",                  # 繁体中文
-        "a:has-text('登錄')",                  # 繁体中文变体
-        "a:has-text('登录')",                  # 简体中文
-        "button:has-text('Sign In')",         # 按钮形式
-        "button:has-text('Login')",           # 按钮形式
+        "a.loggedInStatus",  # 旧版 class
+        "a:has-text('Sign In')",  # 英文
+        "a:has-text('Login')",  # 英文变体
+        "a:has-text('登入')",  # 繁体中文
+        "a:has-text('登錄')",  # 繁体中文变体
+        "a:has-text('登录')",  # 简体中文
+        "button:has-text('Sign In')",  # 按钮形式
+        "button:has-text('Login')",  # 按钮形式
     ]
 
     def __init__(self):
@@ -160,7 +160,7 @@ class BaseBypassRuntime:
                     success = await self._navigate_direct()
 
                 if not success:
-                    logger.warning(f"导航策略未到达登录页, 重试...")
+                    logger.warning("导航策略未到达登录页, 重试...")
                     continue
 
                 # 防御: 页面可能在导航过程中关闭
@@ -197,7 +197,7 @@ class BaseBypassRuntime:
     def _load_link_cache(self) -> int | None:
         """读取上次成功的 Apply 链接索引, 失败返回 None"""
         try:
-            with open(config.NAV_LINK_CACHE_FILE, "r", encoding="utf-8") as f:
+            with open(config.NAV_LINK_CACHE_FILE, encoding="utf-8") as f:
                 data = json.load(f)
                 idx = data.get("success_link_idx")
                 if isinstance(idx, int) and idx >= 0:
@@ -245,10 +245,7 @@ class BaseBypassRuntime:
         # 优先级2: href 匹配模式
         pattern = getattr(config, "NAV_PREFERRED_HREF_PATTERN", "")
         if pattern and hrefs and not order:
-            matched = [
-                i for i in remaining
-                if i < len(hrefs) and hrefs[i] and pattern in hrefs[i]
-            ]
+            matched = [i for i in remaining if i < len(hrefs) and hrefs[i] and pattern in hrefs[i]]
             if matched:
                 order.extend(matched)
                 for i in matched:
@@ -285,7 +282,7 @@ class BaseBypassRuntime:
                 }""")
                 if ready:
                     js_ready = True
-                    logger.info(f"JS 框架就绪 (j2w.TC.handleViewProfileAction 已绑定, 第 {wait_i+1}s)")
+                    logger.info(f"JS 框架就绪 (j2w.TC.handleViewProfileAction 已绑定, 第 {wait_i + 1}s)")
                     break
             except Exception:
                 pass
@@ -394,7 +391,7 @@ class BaseBypassRuntime:
         for order_pos, link_idx in enumerate(link_order):
             link = apply_locator.nth(link_idx)
             href = hrefs[link_idx] if link_idx < len(hrefs) else "(无法获取)"
-            logger.info(f"尝试 Apply 链接 [{link_idx}/{link_count}] (第{order_pos+1}次): href={href}")
+            logger.info(f"尝试 Apply 链接 [{link_idx}/{link_count}] (第{order_pos + 1}次): href={href}")
 
             pages_before = len(self.context.pages)
 
@@ -415,7 +412,7 @@ class BaseBypassRuntime:
 
             logger.info("等待跳转到 SuccessFactors 登录页...")
             reached_sf = False
-            for i in range(15):
+            for _ in range(15):
                 await asyncio.sleep(1)
                 try:
                     current_url = self.page.url
@@ -539,8 +536,7 @@ class BaseBypassRuntime:
                 onclick = await link.get_attribute("onclick") or ""
                 text = (await link.text_content() or "").strip()
                 logger.info(
-                    f"点击登录链接: selector='{sel}', text='{text}', "
-                    f"href='{href[:60]}', onclick='{onclick[:80]}'"
+                    f"点击登录链接: selector='{sel}', text='{text}', href='{href[:60]}', onclick='{onclick[:80]}'"
                 )
 
                 # 记录点击前状态用于变化检测
@@ -570,7 +566,7 @@ class BaseBypassRuntime:
 
                 for strategy_idx, strategy in enumerate(click_strategies):
                     try:
-                        logger.info(f"  点击策略 [{strategy_idx+1}/{len(click_strategies)}]: {strategy}")
+                        logger.info(f"  点击策略 [{strategy_idx + 1}/{len(click_strategies)}]: {strategy}")
 
                         if strategy == "direct_call":
                             # 直接调用 SAP 框架函数, 绕过 isTrusted 检查
@@ -591,12 +587,15 @@ class BaseBypassRuntime:
 
                         elif strategy == "dispatch_event":
                             # 派发完整 MouseEvent (bubbles + cancelable)
-                            await self.page.evaluate("""(el) => {
+                            await self.page.evaluate(
+                                """(el) => {
                                 const evt = new MouseEvent('click', {
                                     bubbles: true, cancelable: true, view: window
                                 });
                                 el.dispatchEvent(evt);
-                            }""", element_handle)
+                            }""",
+                                element_handle,
+                            )
 
                         elif strategy == "element_click":
                             # el.click() 合成点击
@@ -617,18 +616,14 @@ class BaseBypassRuntime:
 
                     logger.info(f"  策略 {strategy} 后未检测到登录表单, 尝试下一个策略")
 
-                logger.warning(
-                    f"selector '{sel}' 所有点击策略均未到达登录页, 尝试下一个选择器"
-                )
+                logger.warning(f"selector '{sel}' 所有点击策略均未到达登录页, 尝试下一个选择器")
             except Exception as e:
                 logger.warning(f"selector '{sel}' 失败: {e}")
                 continue
 
         return False
 
-    async def _poll_login_form_appeared(
-        self, url_before: str, pages_before: int, timeout_s: int = None
-    ) -> bool:
+    async def _poll_login_form_appeared(self, url_before: str, pages_before: int, timeout_s: int = None) -> bool:
         """
         轮询检测登录表单是否出现.
         同时检测3种导航结果:
@@ -650,7 +645,7 @@ class BaseBypassRuntime:
             # 检测1: 当前页 #username 出现 (SPA 更新)
             try:
                 if await self.page.locator("#username").count() > 0:
-                    logger.info(f"登录表单已加载 (当前页, 第 {i+1}s)")
+                    logger.info(f"登录表单已加载 (当前页, 第 {i + 1}s)")
                     return True
             except Exception:
                 pass
@@ -661,7 +656,7 @@ class BaseBypassRuntime:
                 for new_page in current_pages[pages_before:]:
                     try:
                         if await new_page.locator("#username").count() > 0:
-                            logger.info(f"登录表单已加载 (新标签页, 第 {i+1}s)")
+                            logger.info(f"登录表单已加载 (新标签页, 第 {i + 1}s)")
                             logger.info(f"新标签页 URL: {new_page.url}")
                             self.page = new_page
                             self.page.set_default_timeout(config.BROWSER_TIMEOUT * 1000)
@@ -673,18 +668,18 @@ class BaseBypassRuntime:
             # 检测3: URL 变化 (SPA history.pushState 导航)
             current_url = self.page.url
             if current_url != url_before:
-                logger.info(f"URL 已变化 (第 {i+1}s): {url_before[:60]} → {current_url[:60]}")
+                logger.info(f"URL 已变化 (第 {i + 1}s): {url_before[:60]} → {current_url[:60]}")
                 # URL 变化后额外等待 SPA 渲染
                 await asyncio.sleep(2)
                 try:
                     if await self.page.locator("#username").count() > 0:
-                        logger.info(f"登录表单已加载 (URL变化后, 第 {i+1}s)")
+                        logger.info(f"登录表单已加载 (URL变化后, 第 {i + 1}s)")
                         return True
                 except Exception:
                     pass
 
             if (i + 1) % 5 == 0:
-                logger.info(f"等待登录表单... (第 {i+1}s)")
+                logger.info(f"等待登录表单... (第 {i + 1}s)")
 
         return False
 
@@ -706,10 +701,7 @@ class BaseBypassRuntime:
                     try:
                         checkbox = frame.locator(".recaptcha-checkbox-border")
                         if await checkbox.count() > 0:
-                            logger.info(
-                                f"reCAPTCHA 已完全渲染 "
-                                f"(checkbox 元素已就绪, 第 {i+1}s)"
-                            )
+                            logger.info(f"reCAPTCHA 已完全渲染 (checkbox 元素已就绪, 第 {i + 1}s)")
                             await self._take_screenshot("02_recaptcha_loaded")
 
                             all_frames = self.page.frames
@@ -723,17 +715,13 @@ class BaseBypassRuntime:
             try:
                 gtype = await self.page.evaluate("typeof grecaptcha")
                 if gtype != "undefined":
-                    logger.info(
-                        f"grecaptcha 对象已加载 (第 {i+1}s), 继续等待 iframe..."
-                    )
+                    logger.info(f"grecaptcha 对象已加载 (第 {i + 1}s), 继续等待 iframe...")
             except Exception:
                 pass
 
             # 半程重载: 如果一半时间过去仍未渲染, 尝试重载页面
             if i == half_timeout:
-                logger.warning(
-                    f"reCAPTCHA 已等待 {half_timeout}s 未渲染, 尝试重载页面..."
-                )
+                logger.warning(f"reCAPTCHA 已等待 {half_timeout}s 未渲染, 尝试重载页面...")
                 try:
                     await self.page.reload(wait_until="domcontentloaded", timeout=30000)
                     await asyncio.sleep(3)
@@ -743,7 +731,7 @@ class BaseBypassRuntime:
 
             await asyncio.sleep(1)
             if (i + 1) % 10 == 0:
-                logger.info(f"等待 reCAPTCHA... (第 {i+1}/{timeout}s)")
+                logger.info(f"等待 reCAPTCHA... (第 {i + 1}/{timeout}s)")
 
         await self._take_screenshot("02_recaptcha_loaded")
         logger.warning(f"reCAPTCHA 渲染等待超时 ({timeout}s)")
@@ -786,9 +774,7 @@ class BaseBypassRuntime:
         except Exception as e:
             logger.warning(f"从 iframe 提取 sitekey 失败: {e}")
 
-        logger.warning(
-            f"无法从页面提取 sitekey, 使用预配置值: {config.RECAPTCHA_SITEKEY}"
-        )
+        logger.warning(f"无法从页面提取 sitekey, 使用预配置值: {config.RECAPTCHA_SITEKEY}")
         return config.RECAPTCHA_SITEKEY
 
     # ========================================================
@@ -850,9 +836,7 @@ class BaseBypassRuntime:
             logger.info("reCAPTCHA token 注入完成")
             await self._take_screenshot("02_token_injected")
         else:
-            logger.info(
-                f"[{self.method_name}] reCAPTCHA 已在浏览器内完成, 跳过 token 注入"
-            )
+            logger.info(f"[{self.method_name}] reCAPTCHA 已在浏览器内完成, 跳过 token 注入")
 
         await self._fill_credentials()
         await self._submit_form()
@@ -943,7 +927,7 @@ class BaseBypassRuntime:
                 break
             except Exception as e:
                 if retry < 2:
-                    logger.warning(f"页面仍在导航中, 等待重试 ({retry+1}/3): {e}")
+                    logger.warning(f"页面仍在导航中, 等待重试 ({retry + 1}/3): {e}")
                     await asyncio.sleep(2)
                 else:
                     # 最后一次重试仍失败: 尝试仅获取 URL (URL 总是可读的)
@@ -967,10 +951,7 @@ class BaseBypassRuntime:
             "data:,",
         ]
         if any(current_url.startswith(prefix) for prefix in BROWSER_ERROR_URL_PREFIXES):
-            logger.error(
-                f"检测到浏览器错误页面: {current_url} - "
-                f"这不是真实跳转, reCAPTCHA 验证失败"
-            )
+            logger.error(f"检测到浏览器错误页面: {current_url} - 这不是真实跳转, reCAPTCHA 验证失败")
             await self._take_screenshot("04_browser_error")
             return False
 
@@ -990,16 +971,20 @@ class BaseBypassRuntime:
 
         # ---- 2. 登录页判定 ----
         LOGIN_TITLE_KEYWORDS = [
-            "Sign In", "Login", "Log In",       # 英文
-            "登录", "登入", "登錄",               # 中文 (简/繁)
-            "职业机会", "職業機會",               # 中文 SAP SuccessFactors 标题
+            "Sign In",
+            "Login",
+            "Log In",  # 英文
+            "登录",
+            "登入",
+            "登錄",  # 中文 (简/繁)
+            "职业机会",
+            "職業機會",  # 中文 SAP SuccessFactors 标题
         ]
         # URL 关键词 (SuccessFactors 登录页特征)
         LOGIN_URL_KEYWORDS = ["career", "successfactors", "login"]
 
-        is_login_page = (
-            any(kw in title for kw in LOGIN_TITLE_KEYWORDS)
-            and any(kw in current_url.lower() for kw in LOGIN_URL_KEYWORDS)
+        is_login_page = any(kw in title for kw in LOGIN_TITLE_KEYWORDS) and any(
+            kw in current_url.lower() for kw in LOGIN_URL_KEYWORDS
         )
 
         if is_login_page:
@@ -1033,23 +1018,16 @@ class BaseBypassRuntime:
                 "尝试次数过多",
             ]
             for keyword in account_error_keywords:
-                if keyword.isascii():
-                    found = keyword in visible_error_lower
-                else:
-                    found = keyword in visible_error_text
+                found = keyword in visible_error_lower if keyword.isascii() else keyword in visible_error_text
                 if found:
                     logger.info(f"检测到账号错误: '{keyword}'")
-                    logger.info(
-                        "reCAPTCHA 已通过! 账号验证失败 (使用测试账号, 预期行为)"
-                    )
+                    logger.info("reCAPTCHA 已通过! 账号验证失败 (使用测试账号, 预期行为)")
                     await self._take_screenshot("04_success")
                     return True
 
             # reCAPTCHA 仍在页面上 -> 验证未通过
             if "recaptcha" in content_lower:
-                logger.error(
-                    "reCAPTCHA 验证可能失败 - 页面仍显示 reCAPTCHA 且无错误信息"
-                )
+                logger.error("reCAPTCHA 验证可能失败 - 页面仍显示 reCAPTCHA 且无错误信息")
                 return False
 
             logger.warning("仍在登录页, 可能 reCAPTCHA 未通过")
@@ -1057,9 +1035,7 @@ class BaseBypassRuntime:
 
         # ---- 4. 非 HTTP(S) URL 检测 (额外的误报防护) ----
         if not current_url.startswith(("http://", "https://")):
-            logger.error(
-                f"非 HTTP(S) URL: {current_url} - 可能是浏览器内部页面, 验证失败"
-            )
+            logger.error(f"非 HTTP(S) URL: {current_url} - 可能是浏览器内部页面, 验证失败")
             await self._take_screenshot("04_non_http")
             return False
 
@@ -1111,9 +1087,7 @@ class BaseBypassRuntime:
             logger.warning(f"提取可见错误文本失败: {e}, 回退到页面文本")
             # Fallback: 提取 body 可见文本 (比 HTML 安全得多)
             try:
-                return await self.page.evaluate(
-                    "() => document.body ? document.body.innerText : ''"
-                )
+                return await self.page.evaluate("() => document.body ? document.body.innerText : ''")
             except Exception:
                 return ""
 
@@ -1174,9 +1148,7 @@ class BaseBypassRuntime:
         exception = context.get("exception")
         exc_type = type(exception).__name__ if exception else ""
         if exception and "TargetClosed" in exc_type:
-            logger.debug(
-                f"抑制 TargetClosedError (页面关闭时的异步操作): {exception}"
-            )
+            logger.debug(f"抑制 TargetClosedError (页面关闭时的异步操作): {exception}")
         else:
             loop.default_exception_handler(context)
 
@@ -1233,8 +1205,6 @@ class BaseBypassRuntime:
 
         finally:
             if self._keep_browser_open:
-                logger.info(
-                    f"[{self.method_name}] 浏览器保持打开状态, 可手动查看页面..."
-                )
+                logger.info(f"[{self.method_name}] 浏览器保持打开状态, 可手动查看页面...")
                 while True:
                     await asyncio.sleep(60)

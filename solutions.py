@@ -20,10 +20,7 @@ SOLUTIONS: list[dict] = [
         "key": "audio",
         "name": "音频识别",
         "short_desc": "faster-whisper 本地模型识别音频挑战",
-        "detail": (
-            "点击 checkbox → 切换音频 → 下载识别 → 提交验证\n"
-            "本地运行, 无需联网调用第三方"
-        ),
+        "detail": ("点击 checkbox → 切换音频 → 下载识别 → 提交验证\n本地运行, 无需联网调用第三方"),
         "cost": "免费",
         "status": "已验证",
         "status_color": "#10b981",
@@ -35,10 +32,7 @@ SOLUTIONS: list[dict] = [
         "key": "api",
         "name": "API 代解",
         "short_desc": "2captcha / CapSolver 第三方服务",
-        "detail": (
-            "提交 sitekey 给 API → 轮询获取 token → 注入页面\n"
-            "成功率最高, 速度最快, 需要付费"
-        ),
+        "detail": ("提交 sitekey 给 API → 轮询获取 token → 注入页面\n成功率最高, 速度最快, 需要付费"),
         "cost": "付费",
         "status": "代码就绪",
         "status_color": "#3b82f6",
@@ -66,10 +60,7 @@ SOLUTIONS: list[dict] = [
         "key": "cookie",
         "name": "无障碍 Cookie",
         "short_desc": "Accessibility Cookie 自动通过验证",
-        "detail": (
-            "设置 Google 无障碍 cookie → reCAPTCHA 自动通过\n"
-            "速度极快, 需注册 Google 无障碍功能获取 cookie"
-        ),
+        "detail": ("设置 Google 无障碍 cookie → reCAPTCHA 自动通过\n速度极快, 需注册 Google 无障碍功能获取 cookie"),
         "cost": "免费",
         "status": "需配置",
         "status_color": "#f59e0b",
@@ -81,10 +72,7 @@ SOLUTIONS: list[dict] = [
         "key": "extension",
         "name": "浏览器扩展",
         "short_desc": "NopeCHA 扩展自动求解",
-        "detail": (
-            "加载 NopeCHA 扩展 → 点击 checkbox → 扩展自动求解\n"
-            "免费, 需下载扩展, 仅支持有头模式"
-        ),
+        "detail": ("加载 NopeCHA 扩展 → 点击 checkbox → 扩展自动求解\n免费, 需下载扩展, 仅支持有头模式"),
         "cost": "免费",
         "status": "需配置",
         "status_color": "#f59e0b",

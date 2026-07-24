@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 # ============================================================
 try:
     from faster_whisper import WhisperModel
+
     HAS_WHISPER = True
 except ImportError:
     HAS_WHISPER = False
@@ -38,6 +39,7 @@ except ImportError:
 
 try:
     import speech_recognition as sr
+
     HAS_SPEECH_REC = True
 except ImportError:
     HAS_SPEECH_REC = False
@@ -45,6 +47,7 @@ except ImportError:
 
 try:
     from pydub import AudioSegment
+
     HAS_PYDUB = True
 except ImportError:
     HAS_PYDUB = False
@@ -238,7 +241,7 @@ class AudioRecaptchaSolver:
                 try:
                     checkbox = frame.locator(".recaptcha-checkbox-border")
                     if await checkbox.count() > 0:
-                        logger.info(f"[Audio] reCAPTCHA 已完全渲染 (checkbox 元素已就绪, 第 {i+1}s)")
+                        logger.info(f"[Audio] reCAPTCHA 已完全渲染 (checkbox 元素已就绪, 第 {i + 1}s)")
                         return True
                 except Exception:
                     pass
@@ -376,9 +379,7 @@ class AudioRecaptchaSolver:
     async def _download_and_recognize(self, audio_url: str) -> str:
         """下载音频文件并使用语音识别转换为文字"""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, self._download_and_recognize_sync, audio_url
-        )
+        return await loop.run_in_executor(None, self._download_and_recognize_sync, audio_url)
 
     def _download_and_recognize_sync(self, audio_url: str) -> str:
         """
@@ -522,10 +523,24 @@ class AudioRecaptchaSolver:
 
         # 完整词 → 数字
         word_map = {
-            "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4",
-            "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9",
-            "first": "1", "second": "2", "third": "3", "fourth": "4",
-            "fifth": "5", "sixth": "6", "seventh": "7", "eighth": "8",
+            "zero": "0",
+            "one": "1",
+            "two": "2",
+            "three": "3",
+            "four": "4",
+            "five": "5",
+            "six": "6",
+            "seven": "7",
+            "eight": "8",
+            "nine": "9",
+            "first": "1",
+            "second": "2",
+            "third": "3",
+            "fourth": "4",
+            "fifth": "5",
+            "sixth": "6",
+            "seventh": "7",
+            "eighth": "8",
             "ninth": "9",
         }
 

@@ -10,14 +10,16 @@ solutions.py 单元测试
 
 无外部依赖, 可在任何平台运行.
 """
+
 import pytest
+
 from solutions import (
-    SOLUTIONS,
-    SOLUTION_MAP,
     SOLUTION_COUNT,
-    get_solution,
+    SOLUTION_MAP,
+    SOLUTIONS,
     check_dependency,
     check_solution_deps,
+    get_solution,
 )
 
 
@@ -29,9 +31,16 @@ class TestSolutionsStructure:
 
     # 每个方案必须包含的字段
     REQUIRED_FIELDS = [
-        "key", "name", "short_desc", "detail",
-        "cost", "status", "status_color",
-        "icon", "cli_icon", "deps",
+        "key",
+        "name",
+        "short_desc",
+        "detail",
+        "cost",
+        "status",
+        "status_color",
+        "icon",
+        "cli_icon",
+        "deps",
     ]
 
     def test_solutions_not_empty(self):
@@ -40,7 +49,7 @@ class TestSolutionsStructure:
 
     def test_solution_count_matches(self):
         """SOLUTION_COUNT 应等于 SOLUTIONS 长度"""
-        assert SOLUTION_COUNT == len(SOLUTIONS)
+        assert len(SOLUTIONS) == SOLUTION_COUNT
 
     @pytest.mark.parametrize("solution", SOLUTIONS)
     def test_required_fields_present(self, solution):

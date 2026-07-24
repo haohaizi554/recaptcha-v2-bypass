@@ -27,11 +27,13 @@ import time
 # 这是 reCAPTCHA 检测自动化的核心向量, stealth.js 无法修补
 try:
     from patchright.async_api import Page, async_playwright
+
     _USE_PATCHRIGHT = True
     logger_patchright = logging.getLogger(__name__)
     logger_patchright.info("[Stealth] 使用 patchright (CDP 痕迹已消除)")
 except ImportError:
     from playwright.async_api import Page, async_playwright
+
     _USE_PATCHRIGHT = False
 
 import config
@@ -128,8 +130,7 @@ class HumanBehavior:
     def _cubic_bezier(p0, p1, p2, p3, t):
         """三次贝塞尔曲线插值"""
         u = 1 - t
-        return (u**3 * p0 + 3 * u**2 * t * p1 +
-                3 * u * t**2 * p2 + t**3 * p3)
+        return u**3 * p0 + 3 * u**2 * t * p1 + 3 * u * t**2 * p2 + t**3 * p3
 
     @staticmethod
     def _generate_bezier_path(start_x, start_y, end_x, end_y, steps=None):
@@ -206,8 +207,7 @@ class HumanBehavior:
 
         # 2. 微调到目标 (小范围修正)
         await asyncio.sleep(random.uniform(0.1, 0.3))
-        await page.mouse.move(x - near_x + random.uniform(-2, 2),
-                              y - near_y + random.uniform(-2, 2))
+        await page.mouse.move(x - near_x + random.uniform(-2, 2), y - near_y + random.uniform(-2, 2))
         await asyncio.sleep(random.uniform(0.05, 0.15))
 
         # 3. 点击前犹豫 (人类反应时间)
@@ -240,10 +240,10 @@ class HumanBehavior:
 
             # 极低概率打错并纠正
             if random.random() < 0.02 and i < len(text) - 1:
-                wrong_char = random.choice('abcdefghijklmnopqrstuvwxyz')
+                wrong_char = random.choice("abcdefghijklmnopqrstuvwxyz")
                 await page.keyboard.type(wrong_char)
                 await asyncio.sleep(random.uniform(0.1, 0.3))
-                await page.keyboard.press('Backspace')
+                await page.keyboard.press("Backspace")
                 await asyncio.sleep(random.uniform(0.1, 0.25))
 
     @staticmethod
@@ -305,7 +305,7 @@ class StealthRuntime(BaseBypassRuntime):
         self._auto_kill_chrome = getattr(config, "STEALTH_AUTO_KILL_CHROME", True)
         self._state_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".stealth_state")
         self._chrome_process = None  # 手动启动的 Chrome 进程
-        self._user_data_dir = None   # Chrome 用户数据目录
+        self._user_data_dir = None  # Chrome 用户数据目录
         self._using_real_profile = False  # 是否使用真实 profile (影响清理逻辑)
 
     # ========================================================
@@ -314,11 +314,12 @@ class StealthRuntime(BaseBypassRuntime):
     def _find_chrome_path(self) -> str | None:
         """查找系统安装的真实 Chrome"""
         import platform
+
         if platform.system() == "Windows":
             candidates = [
-                os.path.join(os.environ.get("ProgramFiles", ""), "Google", "Chrome", "Application", "chrome.exe"),
-                os.path.join(os.environ.get("ProgramFiles(x86)", ""), "Google", "Chrome", "Application", "chrome.exe"),
-                os.path.join(os.environ.get("LocalAppData", ""), "Google", "Chrome", "Application", "chrome.exe"),
+                os.path.join(os.environ.get("PROGRAMFILES", ""), "Google", "Chrome", "Application", "chrome.exe"),
+                os.path.join(os.environ.get("PROGRAMFILES(X86)", ""), "Google", "Chrome", "Application", "chrome.exe"),
+                os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "Application", "chrome.exe"),
             ]
         else:
             candidates = ["/usr/bin/google-chrome", "/usr/bin/chromium-browser"]
@@ -335,9 +336,10 @@ class StealthRuntime(BaseBypassRuntime):
         Linux:   ~/.config/google-chrome
         """
         import platform
+
         system = platform.system()
         if system == "Windows":
-            path = os.path.join(os.environ.get("LocalAppData", ""), "Google", "Chrome", "User Data")
+            path = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "User Data")
         elif system == "Darwin":
             path = os.path.expanduser("~/Library/Application Support/Google/Chrome")
         else:
@@ -348,19 +350,24 @@ class StealthRuntime(BaseBypassRuntime):
 
     def _is_chrome_running(self) -> bool:
         """检查 Chrome 是否正在运行"""
-        import subprocess
         import platform
+        import subprocess
+
         try:
             if platform.system() == "Windows":
                 result = subprocess.run(
                     ["tasklist", "/FI", "IMAGENAME eq chrome.exe"],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 return "chrome.exe" in result.stdout
             else:
                 result = subprocess.run(
                     ["pgrep", "-f", "chrome"],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 return len(result.stdout.strip()) > 0
         except Exception:
@@ -368,13 +375,15 @@ class StealthRuntime(BaseBypassRuntime):
 
     def _kill_chrome(self):
         """终止所有 Chrome 进程 (释放 profile 锁)"""
-        import subprocess
         import platform
+        import subprocess
+
         try:
             if platform.system() == "Windows":
                 subprocess.run(
                     ["taskkill", "/F", "/IM", "chrome.exe"],
-                    capture_output=True, timeout=10,
+                    capture_output=True,
+                    timeout=10,
                 )
             else:
                 subprocess.run(["pkill", "-f", "chrome"], capture_output=True, timeout=10)
@@ -388,6 +397,7 @@ class StealthRuntime(BaseBypassRuntime):
         taskkill /F 强制终止 Chrome 后, 锁文件可能未被释放, 导致下次启动卡住.
         """
         import os
+
         # Chrome 锁文件位置 (Windows):
         # - User Data/Default/LOCK (主锁)
         # - User Data/Default/LOCK~*.TMP (临时锁)
@@ -435,6 +445,7 @@ class StealthRuntime(BaseBypassRuntime):
                         logger.warning("[Stealth] Chrome 正在运行, 正在关闭以释放真实 profile...")
                         self._kill_chrome()
                         import time
+
                         time.sleep(5)  # 等待进程完全退出 + 文件句柄释放 (3s→5s)
                         # 清理残留的 profile 锁文件 (taskkill /F 可能导致锁未释放)
                         self._cleanup_profile_locks(real_dir)
@@ -454,10 +465,12 @@ class StealthRuntime(BaseBypassRuntime):
             else:
                 logger.warning("[Stealth] 未找到真实 Chrome profile, 回退到临时 profile")
                 import tempfile
+
                 self._user_data_dir = tempfile.mkdtemp(prefix="stealth_chrome_")
                 self._using_real_profile = False
         else:
             import tempfile
+
             self._user_data_dir = tempfile.mkdtemp(prefix="stealth_chrome_")
             self._using_real_profile = False
             logger.info("[Stealth] 使用临时 profile (STEALTH_USE_REAL_PROFILE=False)")
@@ -469,11 +482,11 @@ class StealthRuntime(BaseBypassRuntime):
             chrome_path,
             f"--remote-debugging-port={port}",
             f"--user-data-dir={self._user_data_dir}",
-            "--profile-directory=Default",       # 明确使用 Default profile
+            "--profile-directory=Default",  # 明确使用 Default profile
             "--no-first-run",
             "--no-default-browser-check",
             "--disable-session-crashed-bubble",  # 防止 "Chrome 未正常关闭" 恢复提示
-            "--restore-last-session",            # 自动恢复会话, 跳过恢复对话框 (关键修复)
+            "--restore-last-session",  # 自动恢复会话, 跳过恢复对话框 (关键修复)
             "--disable-features=InfiniteSessionRestore",  # 跳过会话恢复
             "--window-size=1920,1080",
             # 注意: 不加 --enable-automation
@@ -482,6 +495,7 @@ class StealthRuntime(BaseBypassRuntime):
         ]
 
         import subprocess
+
         self._chrome_process = subprocess.Popen(
             args,
             stdout=subprocess.PIPE,
@@ -496,8 +510,6 @@ class StealthRuntime(BaseBypassRuntime):
         只复制 cookies/历史/登录数据等 — 不复制缓存/扩展 (太大)
         这些文件让 reCAPTCHA 看到真实的 Google 会话, 大幅降低风险评分
         """
-        import shutil
-        import time
 
         real_default = os.path.join(real_dir, "Default")
         temp_default = os.path.join(temp_dir, "Default")
@@ -512,12 +524,12 @@ class StealthRuntime(BaseBypassRuntime):
         # 2. 复制 Default profile 的关键文件
         # Cookies 位置: Chrome 96+ 在 Default/Network/Cookies, 旧版在 Default/Cookies
         critical_files = [
-            "Cookies",               # 旧版 cookie 路径
-            "Login Data",            # 保存的密码
-            "Preferences",           # 用户偏好设置
-            "History",               # 浏览历史
-            "Web Data",              # 表单数据
-            "TransportSecurity",     # HSTS 数据
+            "Cookies",  # 旧版 cookie 路径
+            "Login Data",  # 保存的密码
+            "Preferences",  # 用户偏好设置
+            "History",  # 浏览历史
+            "Web Data",  # 表单数据
+            "TransportSecurity",  # HSTS 数据
         ]
 
         copied_count = 0
@@ -552,6 +564,7 @@ class StealthRuntime(BaseBypassRuntime):
         """带重试的文件复制 (Chrome 刚关闭时文件可能被短暂锁定)"""
         import shutil
         import time
+
         for attempt in range(max_retries):
             try:
                 shutil.copy2(src, dst)
@@ -583,6 +596,7 @@ class StealthRuntime(BaseBypassRuntime):
 
         # 创建临时 profile
         import tempfile
+
         self._user_data_dir = tempfile.mkdtemp(prefix="stealth_chrome_")
         self._using_real_profile = False
 
@@ -685,7 +699,7 @@ class StealthRuntime(BaseBypassRuntime):
         try:
             os.makedirs(self._state_dir, exist_ok=True)
             state_path = os.path.join(self._state_dir, "browser_state.json")
-            state = await self.context.storage_state(path=state_path)
+            await self.context.storage_state(path=state_path)
             logger.info(f"[Stealth] 浏览器状态已保存到 {state_path}")
         except Exception as e:
             logger.warning(f"[Stealth] 保存浏览器状态失败: {e}")
@@ -718,10 +732,12 @@ class StealthRuntime(BaseBypassRuntime):
             saved_state = await self._load_browser_state()
             if saved_state:
                 original_get_context = self._get_context_options
+
                 def _get_context_with_state():
                     opts = original_get_context()
                     opts["storage_state"] = saved_state
                     return opts
+
                 self._get_context_options = _get_context_with_state
             await super().init_browser()
 
@@ -765,6 +781,7 @@ class StealthRuntime(BaseBypassRuntime):
         # 清理临时 profile — 绝不删除真实 profile!
         if self._user_data_dir and not self._using_real_profile:
             import shutil
+
             try:
                 shutil.rmtree(self._user_data_dir, ignore_errors=True)
                 logger.info("[Stealth] 临时 profile 已清理")
@@ -863,18 +880,24 @@ class StealthRuntime(BaseBypassRuntime):
             #          chrome.runtime 在普通页面上可能不存在, 这是正常的
             issues = []
             if diagnostics.get("webdriver") == "true":
-                issues.append(f"navigator.webdriver = true (检测到自动化!)")
+                issues.append("navigator.webdriver = true (检测到自动化!)")
             if diagnostics.get("cdc_traces", 0) > 0:
                 issues.append(f"检测到 {diagnostics['cdc_traces']} 个 cdc_ 痕迹")
 
-            logger.info(f"[Stealth] webdriver: {diagnostics.get('webdriver')} (type: {diagnostics.get('webdriver_type')})")
-            logger.info(f"[Stealth] chrome.runtime: {'存在' if diagnostics.get('has_chrome_runtime') else '缺失 (正常)'}")
+            logger.info(
+                f"[Stealth] webdriver: {diagnostics.get('webdriver')} (type: {diagnostics.get('webdriver_type')})"
+            )
+            logger.info(
+                f"[Stealth] chrome.runtime: {'存在' if diagnostics.get('has_chrome_runtime') else '缺失 (正常)'}"
+            )
             logger.info(f"[Stealth] UA: {diagnostics.get('userAgent', '')[:80]}")
             logger.info(f"[Stealth] platform: {diagnostics.get('platform')}")
             logger.info(f"[Stealth] languages: {diagnostics.get('languages')}")
             logger.info(f"[Stealth] hardwareConcurrency: {diagnostics.get('hardwareConcurrency')}")
             logger.info(f"[Stealth] plugins: {diagnostics.get('plugins_count')} 个")
-            logger.info(f"[Stealth] WebGL: {diagnostics.get('webglVendor', '?')} / {diagnostics.get('webglRenderer', '?')[:60]}")
+            logger.info(
+                f"[Stealth] WebGL: {diagnostics.get('webglVendor', '?')} / {diagnostics.get('webglRenderer', '?')[:60]}"
+            )
             logger.info(f"[Stealth] cdc_ 痕迹: {diagnostics.get('cdc_traces', 0)} 个")
 
             if issues:
@@ -931,11 +954,17 @@ class StealthRuntime(BaseBypassRuntime):
                 if await search_box.count() > 0:
                     # 中文搜索词 (匹配 zh-CN 语言环境)
                     search_terms = [
-                        "今天天气", "新闻头条", "python教程",
-                        "咖啡店推荐", "电影票房", "科技新闻",
+                        "今天天气",
+                        "新闻头条",
+                        "python教程",
+                        "咖啡店推荐",
+                        "电影票房",
+                        "科技新闻",
                     ]
                     term = random.choice(search_terms)
-                    await HumanBehavior.human_type(warmup_page, 'input[name="wd"], input[name="q"], textarea[name="q"]', term)
+                    await HumanBehavior.human_type(
+                        warmup_page, 'input[name="wd"], input[name="q"], textarea[name="q"]', term
+                    )
                     await asyncio.sleep(random.uniform(0.3, 0.8))
                     await warmup_page.keyboard.press("Enter")
                     await asyncio.sleep(random.uniform(2.0, 4.0))
@@ -1052,7 +1081,7 @@ class StealthRuntime(BaseBypassRuntime):
                     if await challenge.count() > 0:
                         logger.warning(f"[Stealth] 触发了图像挑战! (第 {attempt} 次)")
                         self._challenge_detected = True
-                        self._consecutive_challenges = getattr(self, '_consecutive_challenges', 0) + 1
+                        self._consecutive_challenges = getattr(self, "_consecutive_challenges", 0) + 1
                         await self._take_screenshot(f"stealth_challenge_triggered_{attempt}")
 
                         # 立即 Fallback 到 ImageRuntime 求解
@@ -1062,8 +1091,8 @@ class StealthRuntime(BaseBypassRuntime):
                         STEALTH_FALLBACK_THRESHOLD = 1
                         if self._consecutive_challenges >= STEALTH_FALLBACK_THRESHOLD:
                             logger.warning(
-                                f"[Stealth] 触发图像挑战, 立即 Fallback 到图像识别 "
-                                f"(isTrusted=false 点击在数据中心 IP 下必然触发挑战)"
+                                "[Stealth] 触发图像挑战, 立即 Fallback 到图像识别 "
+                                "(isTrusted=false 点击在数据中心 IP 下必然触发挑战)"
                             )
                             # 等待挑战弹窗完全加载 (bframe 内图片可能需要时间渲染)
                             logger.info("[Stealth] 等待挑战弹窗完全加载 (3s)...")
@@ -1151,6 +1180,7 @@ class StealthRuntime(BaseBypassRuntime):
 
         try:
             from runtimes.runtime_image import ImageRuntime
+
             image_runtime = ImageRuntime()
             # 共享浏览器会话
             image_runtime.playwright = self.playwright
@@ -1162,12 +1192,15 @@ class StealthRuntime(BaseBypassRuntime):
             async def _skip_checkbox():
                 logger.info("[Stealth] Fallback: 跳过 checkbox 点击 (挑战弹窗已显示)")
                 return True
+
             image_runtime._click_checkbox = _skip_checkbox
 
             sitekey = await self.extract_sitekey()
             result = await image_runtime.solve_recaptcha(sitekey, self.page.url)
 
-            logger.info(f"[Stealth] 图像识别 Fallback 完成, result={'None(浏览器内通过)' if result is None else 'token'}")
+            logger.info(
+                f"[Stealth] 图像识别 Fallback 完成, result={'None(浏览器内通过)' if result is None else 'token'}"
+            )
             return result
         except RuntimeError:
             raise
@@ -1192,7 +1225,7 @@ class StealthRuntime(BaseBypassRuntime):
             await HumanBehavior.random_delay(0.3, 1.0)
 
             # 密码字段
-            pwd_field = self.page.locator("#password")
+            self.page.locator("#password")
             await HumanBehavior.human_type(self.page, "#password", config.ACCOUNT_PASSWORD)
             logger.info("[Stealth] 密码已填写 (真人打字)")
 

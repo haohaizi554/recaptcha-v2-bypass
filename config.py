@@ -33,8 +33,8 @@ CAPSOLVER_API_KEY = "YOUR_CAPSOLVER_API_KEY"
 # 浏览器配置
 # ============================================================
 BROWSER_HEADLESS = False  # 设为 True 则无头模式运行
-BROWSER_TIMEOUT = 30      # 页面加载超时 (秒)
-IMPLICIT_WAIT = 10        # 隐式等待 (秒)
+BROWSER_TIMEOUT = 30  # 页面加载超时 (秒)
+IMPLICIT_WAIT = 10  # 隐式等待 (秒)
 
 # ============================================================
 # 账号配置 (如需登录)
@@ -49,40 +49,42 @@ ACCOUNT_PASSWORD = os.environ.get("ACCOUNT_PASSWORD", "your_password")
 # ============================================================
 # 音频识别引擎配置
 # ============================================================
-AUDIO_RECOGNIZER = "whisper"       # "whisper" | "google"
+AUDIO_RECOGNIZER = "whisper"  # "whisper" | "google"
 
 # faster-whisper 配置
-WHISPER_MODEL_SIZE = "base"        # tiny|base|small|medium|large-v3
-WHISPER_DEVICE = "cpu"             # cpu|cuda
-WHISPER_COMPUTE_TYPE = "int8"      # int8|int8_float16|float16|float32
-WHISPER_BEAM_SIZE = 1              # beam search 宽度 (1=greedy, 最快)
-WHISPER_LANGUAGE = "en"            # 语言代码
+WHISPER_MODEL_SIZE = "base"  # tiny|base|small|medium|large-v3
+WHISPER_DEVICE = "cpu"  # cpu|cuda
+WHISPER_COMPUTE_TYPE = "int8"  # int8|int8_float16|float16|float32
+WHISPER_BEAM_SIZE = 1  # beam search 宽度 (1=greedy, 最快)
+WHISPER_LANGUAGE = "en"  # 语言代码
 
 # ============================================================
 # 导航配置
 # ============================================================
-NAV_MAX_RETRIES = 6                # 导航重试次数 (原 3 → 6)
-NAV_DIRECT_URL_FALLBACK = True     # 多次失败后直接访问 SuccessFactors URL
-NAV_PAGE_LOAD_TIMEOUT = 60000      # 页面加载超时 (毫秒)
-NAV_FORM_WAIT_TIMEOUT = 30000      # 登录表单等待超时 (毫秒)
+NAV_MAX_RETRIES = 6  # 导航重试次数 (原 3 → 6)
+NAV_DIRECT_URL_FALLBACK = True  # 多次失败后直接访问 SuccessFactors URL
+NAV_PAGE_LOAD_TIMEOUT = 60000  # 页面加载超时 (毫秒)
+NAV_FORM_WAIT_TIMEOUT = 30000  # 登录表单等待超时 (毫秒)
 NAV_LINK_CACHE_FILE = os.path.join(os.path.dirname(__file__), ".nav_link_cache.json")  # Apply 链接成功索引缓存
 NAV_PREFERRED_HREF_PATTERN = "/talentcommunity/apply/"  # 优先尝试的 href 模式 (首次运行无缓存时生效)
 
 # ============================================================
 # reCAPTCHA 配置
 # ============================================================
-RECAPTCHA_MAX_RETRIES = 6          # 求解重试次数 (原 3 → 6)
-RECAPTCHA_RENDER_WAIT = 60         # reCAPTCHA 渲染等待 (秒, 原 30 → 60)
-RECAPTCHA_RETRY_DELAY = 3          # 重试间隔 (秒)
+RECAPTCHA_MAX_RETRIES = 6  # 求解重试次数 (原 3 → 6)
+RECAPTCHA_RENDER_WAIT = 60  # reCAPTCHA 渲染等待 (秒, 原 30 → 60)
+RECAPTCHA_RETRY_DELAY = 3  # 重试间隔 (秒)
 
 # ============================================================
 # Stealth 方案配置
 # ============================================================
-STEALTH_USE_CDP = False            # CDP 模式: 连接真实 Chrome (需先启动 chrome --remote-debugging-port=9222)
+STEALTH_USE_CDP = False  # CDP 模式: 连接真实 Chrome (需先启动 chrome --remote-debugging-port=9222)
 STEALTH_CDP_ENDPOINT = "http://localhost:9222"  # CDP 连接地址
 STEALTH_PERSISTENT_SESSION = True  # 持久化会话: 保存 cookie/localStorage
-STEALTH_USE_REAL_PROFILE = True    # 使用真实 Chrome profile (含 cookies/历史/扩展), 消除空白 profile 触发 reCAPTCHA 的风险
-STEALTH_AUTO_KILL_CHROME = True    # 自动关闭已运行的 Chrome 以释放 profile 锁
+STEALTH_USE_REAL_PROFILE = (
+    True  # 使用真实 Chrome profile (含 cookies/历史/扩展), 消除空白 profile 触发 reCAPTCHA 的风险
+)
+STEALTH_AUTO_KILL_CHROME = True  # 自动关闭已运行的 Chrome 以释放 profile 锁
 
 # 音频下载请求头 (模拟浏览器, 避免 Google 拦截)
 AUDIO_DOWNLOAD_HEADERS = {
@@ -98,7 +100,9 @@ AUDIO_DOWNLOAD_HEADERS = {
 IMAGE_CLASSIFIER_MODEL = "openai/clip-vit-base-patch32"  # HuggingFace CLIP 模型
 IMAGE_MATCH_THRESHOLD = 0.5  # CLIP 匹配概率阈值 (0-1, 越高越严格)
 IMAGE_MIN_CONFIDENCE = 0.45  # 最低置信度: 排序模式下低于此值的 tile 不选中
-IMAGE_RANK_SCORE_GAP = 0.45  # CLIP top-k 自适应间隔: 只选距离最高分不超过该值的 tile (0.18→0.45: CLIP 对正确匹配分数跨度大, 过紧导致漏选)
+IMAGE_RANK_SCORE_GAP = (
+    0.45  # CLIP top-k 自适应间隔: 只选距离最高分不超过该值的 tile (0.18→0.45: CLIP 对正确匹配分数跨度大, 过紧导致漏选)
+)
 IMAGE_TOP_K_3X3 = 3  # 3x3 CLIP 回退时最多点击的 tile 数
 IMAGE_TOP_K_4X4 = 4  # 4x4/更多格子 CLIP 回退时最多点击的 tile 数
 
@@ -148,8 +152,8 @@ SCREENSHOT_DIR = "screenshots"
 # ============================================================
 # Native 方案配置 (零 CDP 痕迹: patchright launch_persistent_context + PyAutoGUI)
 # ============================================================
-NATIVE_BROWSER_CHANNEL = "chrome"        # 使用系统 Chrome (patchright channel 参数)
-NATIVE_CLICK_RESULT_WAIT = 30            # OS 点击后等待 reCAPTCHA 响应时间 (秒, reCAPTCHA 处理可能需要 20-30s)
-NATIVE_USE_REAL_PROFILE = False           # False=临时profile+复制关键cookies (推荐, 快速), True=直接用真实profile (慢, 可能卡住)
-NATIVE_AUTO_KILL_CHROME = True           # 自动关闭已运行的 Chrome 以释放 profile 锁
-NATIVE_FALLBACK_TO_IMAGE = True          # 触发图像挑战时是否 Fallback 到 ImageRuntime
+NATIVE_BROWSER_CHANNEL = "chrome"  # 使用系统 Chrome (patchright channel 参数)
+NATIVE_CLICK_RESULT_WAIT = 30  # OS 点击后等待 reCAPTCHA 响应时间 (秒, reCAPTCHA 处理可能需要 20-30s)
+NATIVE_USE_REAL_PROFILE = False  # False=临时profile+复制关键cookies (推荐, 快速), True=直接用真实profile (慢, 可能卡住)
+NATIVE_AUTO_KILL_CHROME = True  # 自动关闭已运行的 Chrome 以释放 profile 锁
+NATIVE_FALLBACK_TO_IMAGE = True  # 触发图像挑战时是否 Fallback 到 ImageRuntime

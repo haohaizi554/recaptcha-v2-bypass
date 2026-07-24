@@ -34,11 +34,14 @@ extend-exclude = [
 select = ["E", "W", "F", "I", "UP", "B", "SIM"]
 
 # 忽略的规则:
-#   E501  — 行过长 (项目含长 URL/中文注释, 不强制截断)
-#   E402  — 模块级 import 不在文件顶部 (项目有条件导入模式)
-#   B008  — 函数默认值中调用函数 (Do not perform function call in argument defaults)
+#   E501   — 行过长 (项目含长 URL/中文注释, 不强制截断)
+#   E402   — 模块级 import 不在文件顶部 (项目有条件导入模式)
+#   B008   — 函数默认值中调用函数 (Do not perform function call in argument defaults)
 #   SIM117 — 嵌套 with 语句 (有时需要保持独立 with 以提高可读性)
-ignore = ["E501", "E402", "B008", "SIM117"]
+#   SIM105 — try/except/pass → contextlib.suppress (清理代码中 try/except/pass 更显式, 避免到处 import contextlib)
+#   SIM102 — 嵌套 if 合并 (有时嵌套 if 更易读, 尤其含日志/注释时)
+#   SIM115 — 文件未用 context manager (stdout/stderr 重定向场景需要保持文件打开)
+ignore = ["E501", "E402", "B008", "SIM117", "SIM105", "SIM102", "SIM115"]
 
 [lint.per-file-ignores]
 # 测试文件允许使用 assert

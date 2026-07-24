@@ -12,9 +12,7 @@ import asyncio
 import logging
 import os
 import sys
-import threading
 import time
-from typing import Optional
 
 # 确保项目根目录在 sys.path 中
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -41,7 +39,6 @@ from PyQt6.QtGui import (
     QPainter,
     QPainterPath,
     QPaintEvent,
-    QPalette,
     QPen,
     QPixmap,
     QPixmapCache,
@@ -68,20 +65,18 @@ from PyQt6.QtWidgets import (
     QRadioButton,
     QScrollArea,
     QSizePolicy,
-    QSpacerItem,
     QVBoxLayout,
     QWidget,
 )
 
+import config
+
 # 优化模块: 模型预加载 / 优先级队列 / 持久化 / 窗口边框
 from core.model_loader import ModelLoader
-from core.task_queue import PriorityTaskQueue, Priority
 from core.persistence import PersistenceManager
+from core.task_queue import Priority, PriorityTaskQueue
 from core.window_chrome import FramelessChromeController
-
-import config
-from solutions import SOLUTIONS as _SOLUTIONS, check_solution_deps
-
+from solutions import SOLUTIONS as _SOLUTIONS
 
 # ============================================================
 # 全局日志配置
@@ -144,9 +139,7 @@ def _draw_vector_icon(
     opacity: float = 1.0,
 ) -> None:
     """在给定矩形中绘制无外部资源的 32×32 逻辑矢量图标。"""
-    default_primary, default_secondary = _ICON_COLORS.get(
-        kind, ("#cbd5e1", "#64748b")
-    )
+    default_primary, default_secondary = _ICON_COLORS.get(kind, ("#cbd5e1", "#64748b"))
     primary = primary or QColor(default_primary)
     secondary = secondary or QColor(default_secondary)
 
@@ -924,17 +917,13 @@ class AppShell(QFrame):
         background.setColorAt(1.0, QColor("#060d19"))
         painter.fillPath(shell_path, QBrush(background))
 
-        purple_glow = QRadialGradient(
-            QPointF(rect.width() * 0.82, 112.0), rect.width() * 0.35
-        )
+        purple_glow = QRadialGradient(QPointF(rect.width() * 0.82, 112.0), rect.width() * 0.35)
         purple_glow.setColorAt(0.0, QColor(126, 34, 206, 78))
         purple_glow.setColorAt(0.43, QColor(79, 70, 229, 34))
         purple_glow.setColorAt(1.0, QColor(30, 41, 59, 0))
         painter.fillRect(rect, QBrush(purple_glow))
 
-        blue_glow = QRadialGradient(
-            QPointF(rect.width() * 0.62, 42.0), rect.width() * 0.32
-        )
+        blue_glow = QRadialGradient(QPointF(rect.width() * 0.62, 42.0), rect.width() * 0.32)
         blue_glow.setColorAt(0.0, QColor(37, 99, 235, 40))
         blue_glow.setColorAt(1.0, QColor(15, 23, 42, 0))
         painter.fillRect(rect, QBrush(blue_glow))
@@ -951,9 +940,7 @@ class AppShell(QFrame):
             (0.92, 136, 75, 1.0),
         ):
             painter.setBrush(QColor(196, 181, 253, alpha))
-            painter.drawEllipse(
-                QRectF(rect.width() * x, float(y), diameter, diameter)
-            )
+            painter.drawEllipse(QRectF(rect.width() * x, float(y), diameter, diameter))
 
         painter.setClipping(False)
         painter.setPen(QPen(QColor(111, 129, 164, 65), 1.0))
@@ -1120,20 +1107,14 @@ class TitleBar(QWidget):
         return None
 
     def mouseDoubleClickEvent(self, event: QMouseEvent):
-        if (
-            event.button() == Qt.MouseButton.LeftButton
-            and self._button_at(event.position().toPoint()) is None
-        ):
+        if event.button() == Qt.MouseButton.LeftButton and self._button_at(event.position().toPoint()) is None:
             self._toggle_maximized()
             event.accept()
             return
         super().mouseDoubleClickEvent(event)
 
     def mousePressEvent(self, event: QMouseEvent):
-        if (
-            event.button() == Qt.MouseButton.LeftButton
-            and self._button_at(event.position().toPoint()) is None
-        ):
+        if event.button() == Qt.MouseButton.LeftButton and self._button_at(event.position().toPoint()) is None:
             # 使用系统级拖拽 (startSystemMove), 比 manual move 更流畅
             # 且支持 Windows Aero Snap (拖到屏幕边缘自动半屏)
             handle = self._window.windowHandle()
@@ -1192,9 +1173,7 @@ class GlowButton(QPushButton):
 
         # 辉光阴影 (替代 QGraphicsDropShadowEffect): 多层半透明圆角矩形
         if glow_alpha > 0:
-            for i, (expand, alpha_mul) in enumerate(
-                [(6, 0.15), (4, 0.25), (2, 0.40)]
-            ):
+            for _i, (expand, alpha_mul) in enumerate([(6, 0.15), (4, 0.25), (2, 0.40)]):
                 glow_rect = rect.adjusted(-expand, -expand + 1, expand, expand + 1)
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.setBrush(QColor(124, 58, 237, int(glow_alpha * alpha_mul)))
@@ -1248,15 +1227,9 @@ class PasswordLineEdit(QLineEdit):
 
     def _toggle_visibility(self):
         show_plain_text = self.echoMode() == QLineEdit.EchoMode.Password
-        self.setEchoMode(
-            QLineEdit.EchoMode.Normal
-            if show_plain_text
-            else QLineEdit.EchoMode.Password
-        )
+        self.setEchoMode(QLineEdit.EchoMode.Normal if show_plain_text else QLineEdit.EchoMode.Password)
         self._reveal_button.kind = "eye_off" if show_plain_text else "eye"
-        self._reveal_button.setToolTip(
-            "隐藏密钥" if show_plain_text else "显示密钥"
-        )
+        self._reveal_button.setToolTip("隐藏密钥" if show_plain_text else "显示密钥")
         self._reveal_button.update()
 
     def resizeEvent(self, event: QResizeEvent):
@@ -1435,10 +1408,7 @@ class MethodCard(QFrame):
         layout.addWidget(self._check_icon, 0, Qt.AlignmentFlag.AlignVCenter)
 
     def mousePressEvent(self, event):
-        if (
-            self.isEnabled()
-            and event.button() == Qt.MouseButton.LeftButton
-        ):
+        if self.isEnabled() and event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit(self.solution["key"])
         super().mousePressEvent(event)
 
@@ -1494,9 +1464,9 @@ class MethodCard(QFrame):
 class BypassWorker(QThread):
     """在独立线程中运行异步 reCAPTCHA 绕过流程"""
 
-    log_signal = pyqtSignal(str, int)       # (消息, 日志级别)
-    status_signal = pyqtSignal(str)         # 状态: running/success/failed
-    finished_signal = pyqtSignal(bool)      # 成功/失败
+    log_signal = pyqtSignal(str, int)  # (消息, 日志级别)
+    status_signal = pyqtSignal(str)  # 状态: running/success/failed
+    finished_signal = pyqtSignal(bool)  # 成功/失败
 
     def __init__(self, runtime):
         super().__init__()
@@ -1571,9 +1541,7 @@ class BypassWorker(QThread):
         if self._loop and self._loop.is_running():
             # 在事件循环中调度浏览器关闭
             if self.runtime and self.runtime.browser:
-                asyncio.run_coroutine_threadsafe(
-                    self.runtime.close(), self._loop
-                )
+                asyncio.run_coroutine_threadsafe(self.runtime.close(), self._loop)
 
 
 class InstallWorker(QThread):
@@ -1588,12 +1556,15 @@ class InstallWorker(QThread):
 
     def run(self):
         import subprocess
+
         pkg_str = " ".join(self.deps)
         self.log_signal.emit(f">>> 正在安装: pip install {pkg_str}")
         try:
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install"] + self.deps,
-                capture_output=True, text=True, timeout=300,
+                capture_output=True,
+                text=True,
+                timeout=300,
             )
             if result.returncode == 0:
                 self.log_signal.emit(">>> 安装成功!")
@@ -1653,9 +1624,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("reCAPTCHA v2 自动化绕过工具")
         self.setWindowFlags(
-            Qt.WindowType.Window
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowSystemMenuHint
+            Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowSystemMenuHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setMinimumSize(1000, 720)
@@ -1664,8 +1633,8 @@ class MainWindow(QMainWindow):
         # QPixmapCache 配置: 100MB 缓存上限
         QPixmapCache.setCacheLimit(102400)
 
-        self._selected_key: Optional[str] = None
-        self._worker: Optional[BypassWorker] = None
+        self._selected_key: str | None = None
+        self._worker: BypassWorker | None = None
         self._runtime = None
         self._run_start_time: float = 0.0  # 运行计时
 
@@ -1679,7 +1648,7 @@ class MainWindow(QMainWindow):
         self._log_degraded = False  # 背压降级标志
 
         # 模型预加载器 (后台线程加载 torch/transformers/ultralytics)
-        self._model_loader: Optional[ModelLoader] = None
+        self._model_loader: ModelLoader | None = None
         self._models_ready = False
 
         # 日志缓冲: 避免高频信号直接操作 QPlainTextEdit 导致 UI 卡死
@@ -1706,9 +1675,7 @@ class MainWindow(QMainWindow):
         self._persistence.restore_window_state(self)
 
         # 恢复上次选择的方案
-        last_method = self._persistence.get(
-            PersistenceManager.KEY_SELECTED_METHOD, "api"
-        )
+        last_method = self._persistence.get(PersistenceManager.KEY_SELECTED_METHOD, "api")
         self._on_method_selected(last_method)
 
         # 延迟到窗口显示后启动模型预加载, 避免后台线程 import torch
@@ -1718,15 +1685,9 @@ class MainWindow(QMainWindow):
     def _start_model_loader(self):
         """在后台线程预加载 ML 模型"""
         self._model_loader = ModelLoader(self)
-        self._model_loader.progress.connect(
-            lambda msg: self._on_log(f"[ModelLoader] {msg}", logging.INFO)
-        )
+        self._model_loader.progress.connect(lambda msg: self._on_log(f"[ModelLoader] {msg}", logging.INFO))
         self._model_loader.ready.connect(self._on_models_ready)
-        self._model_loader.error.connect(
-            lambda err: self._on_log(
-                f"[ModelLoader] 预加载失败: {err}", logging.WARNING
-            )
-        )
+        self._model_loader.error.connect(lambda err: self._on_log(f"[ModelLoader] 预加载失败: {err}", logging.WARNING))
         self._model_loader.start()
 
     def _on_models_ready(self, cache: dict):
@@ -2068,9 +2029,7 @@ class MainWindow(QMainWindow):
             self._rb_capsolver = QRadioButton("CapSolver (~$0.80/1000次)")
 
             # 恢复上次选择的 provider
-            saved_provider = self._persistence.get(
-                PersistenceManager.KEY_API_PROVIDER, "2captcha"
-            )
+            saved_provider = self._persistence.get(PersistenceManager.KEY_API_PROVIDER, "2captcha")
             if saved_provider == "capsolver":
                 self._rb_capsolver.setChecked(True)
             else:
@@ -2081,14 +2040,10 @@ class MainWindow(QMainWindow):
 
             # provider 变化时保存偏好
             self._rb_2captcha.toggled.connect(
-                lambda checked: checked and self._persistence.set(
-                    PersistenceManager.KEY_API_PROVIDER, "2captcha"
-                )
+                lambda checked: checked and self._persistence.set(PersistenceManager.KEY_API_PROVIDER, "2captcha")
             )
             self._rb_capsolver.toggled.connect(
-                lambda checked: checked and self._persistence.set(
-                    PersistenceManager.KEY_API_PROVIDER, "capsolver"
-                )
+                lambda checked: checked and self._persistence.set(PersistenceManager.KEY_API_PROVIDER, "capsolver")
             )
 
             provider_col = QVBoxLayout()
@@ -2135,10 +2090,8 @@ class MainWindow(QMainWindow):
 
                 # 启动子线程检测依赖 (窗口未显示时延迟启动, 避免与原生窗口创建竞争)
                 self._dep_check_worker = DepCheckWorker()
-                self._dep_check_worker.finished_signal.connect(
-                    self._on_dep_check_finished
-                )
-                if getattr(self, '_window_ready', False):
+                self._dep_check_worker.finished_signal.connect(self._on_dep_check_finished)
+                if getattr(self, "_window_ready", False):
                     self._dep_check_worker.start()
                 else:
                     self._pending_dep_check = self._dep_check_worker
@@ -2161,10 +2114,7 @@ class MainWindow(QMainWindow):
             if exists:
                 self._add_config_label(f"扩展路径: {ext_path}\n状态: 已就绪")
             else:
-                self._add_config_label(
-                    f"扩展路径: {ext_path}\n状态: 未找到扩展文件\n"
-                    f"请下载 NopeCHA 扩展并解压到该目录"
-                )
+                self._add_config_label(f"扩展路径: {ext_path}\n状态: 未找到扩展文件\n请下载 NopeCHA 扩展并解压到该目录")
 
             browse_btn = QPushButton("选择扩展目录")
             browse_btn.setObjectName("secondaryBtn")
@@ -2191,10 +2141,7 @@ class MainWindow(QMainWindow):
                     f"  Fallback: 图像挑战 YOLO 三引擎"
                 )
             else:
-                self._add_config_label(
-                    f"缺少依赖: {', '.join(missing)}\n"
-                    f"请运行: pip install {' '.join(missing)}"
-                )
+                self._add_config_label(f"缺少依赖: {', '.join(missing)}\n请运行: pip install {' '.join(missing)}")
                 install_btn = QPushButton("安装依赖")
                 install_btn.setObjectName("secondaryBtn")
                 install_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -2219,16 +2166,11 @@ class MainWindow(QMainWindow):
                 deps.append(pkg_name)
 
         if deps:
-            self._add_config_label(
-                f"缺少依赖: {', '.join(deps)}\n"
-                f"请运行: pip install {' '.join(deps)}"
-            )
+            self._add_config_label(f"缺少依赖: {', '.join(deps)}\n请运行: pip install {' '.join(deps)}")
             install_btn = QPushButton("安装依赖")
             install_btn.setObjectName("secondaryBtn")
             install_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            install_btn.clicked.connect(
-                lambda: self._install_deps(deps)
-            )
+            install_btn.clicked.connect(lambda: self._install_deps(deps))
             self._dynamic_layout.addWidget(install_btn, 0, Qt.AlignmentFlag.AlignVCenter)
         else:
             cls_path = getattr(config, "YOLO_CLS_MODEL_PATH", "")
@@ -2261,9 +2203,7 @@ class MainWindow(QMainWindow):
     def _install_deps(self, deps: list):
         """通过子线程执行 pip install, 不阻塞 UI"""
         self._install_worker = InstallWorker(deps)
-        self._install_worker.log_signal.connect(
-            lambda msg: self._on_log(msg, logging.INFO)
-        )
+        self._install_worker.log_signal.connect(lambda msg: self._on_log(msg, logging.INFO))
         self._install_worker.finished_signal.connect(self._on_install_finished)
         self._install_worker.start()
 
@@ -2277,8 +2217,10 @@ class MainWindow(QMainWindow):
 
     def _browse_extension(self):
         from PyQt6.QtWidgets import QFileDialog
+
         path = QFileDialog.getExistingDirectory(
-            self, "选择 NopeCHA 扩展目录",
+            self,
+            "选择 NopeCHA 扩展目录",
             os.path.dirname(config.NOPECHA_EXTENSION_PATH),
         )
         if path:
@@ -2339,10 +2281,12 @@ class MainWindow(QMainWindow):
         """根据选择的方案创建对应的 runtime 实例"""
         if key == "audio":
             from runtimes.runtime_audio import AudioRuntime
+
             return AudioRuntime()
 
         elif key == "api":
             from runtimes.runtime_api import APIRuntime
+
             provider = "2captcha" if self._rb_2captcha.isChecked() else "capsolver"
             api_key = self._api_key_input.text().strip()
 
@@ -2363,12 +2307,14 @@ class MainWindow(QMainWindow):
 
         elif key == "image":
             from runtimes.runtime_image import ImageRuntime
+
             if not self._check_module("PIL"):
                 raise ValueError("Pillow 未安装, 请先安装依赖 (点击'安装依赖'按钮)")
             return ImageRuntime()
 
         elif key == "cookie":
             from runtimes.runtime_cookie import CookieRuntime
+
             cookie_val = self._cookie_input.text().strip()
             if not cookie_val:
                 if config.RECAPTCHA_ACCESSIBILITY_COOKIE and "YOUR_" not in config.RECAPTCHA_ACCESSIBILITY_COOKIE:
@@ -2379,6 +2325,7 @@ class MainWindow(QMainWindow):
 
         elif key == "extension":
             from runtimes.runtime_extension import ExtensionRuntime
+
             ext_path = config.NOPECHA_EXTENSION_PATH
             if not os.path.isdir(ext_path) or len(os.listdir(ext_path)) <= 1:
                 raise ValueError(f"NopeCHA 扩展目录无效: {ext_path}\n请选择正确的扩展目录")
@@ -2386,6 +2333,7 @@ class MainWindow(QMainWindow):
 
         elif key == "native":
             from runtimes.runtime_native import NativeRuntime
+
             if not self._check_module("patchright"):
                 raise ValueError("patchright 未安装, 请先安装依赖")
             if not self._check_module("pyautogui"):
@@ -2511,7 +2459,7 @@ class MainWindow(QMainWindow):
     def showEvent(self, event):
         """窗口显示时安装原生边框控制器 + 启动延迟的后台任务"""
         super().showEvent(event)
-        if not getattr(self, '_chrome_installed', False):
+        if not getattr(self, "_chrome_installed", False):
             self._chrome_installed = True
             # 延迟到下一事件循环迭代安装, 避免在 show() 期间调用 winId()
             # 和 installNativeEventFilter 导致原生窗口 access violation
@@ -2519,10 +2467,10 @@ class MainWindow(QMainWindow):
         self._window_ready = True
 
         # 启动延迟的后台任务 (避免与窗口原生创建竞争导致 access violation)
-        if getattr(self, '_pending_model_loader', False):
+        if getattr(self, "_pending_model_loader", False):
             self._pending_model_loader = False
             QTimer.singleShot(100, self._start_model_loader)
-        pending_dep = getattr(self, '_pending_dep_check', None)
+        pending_dep = getattr(self, "_pending_dep_check", None)
         if pending_dep is not None:
             self._pending_dep_check = None
             QTimer.singleShot(200, pending_dep.start)
@@ -2539,13 +2487,13 @@ class MainWindow(QMainWindow):
 
     def eventFilter(self, watched, event):
         """Qt 事件过滤器: 边框缩放光标 + startSystemResize"""
-        if hasattr(self, '_window_chrome') and self._window_chrome.event_filter(watched, event):
+        if hasattr(self, "_window_chrome") and self._window_chrome.event_filter(watched, event):
             return True
         return super().eventFilter(watched, event)
 
     def mousePressEvent(self, event):
         """鼠标按下: 检测边框缩放区域"""
-        if hasattr(self, '_window_chrome') and self._window_chrome.mouse_press_event(event):
+        if hasattr(self, "_window_chrome") and self._window_chrome.mouse_press_event(event):
             return
         super().mousePressEvent(event)
 
@@ -2582,16 +2530,20 @@ class MainWindow(QMainWindow):
         shell_rect = QRectF(margin, margin, w - 2 * margin, h - 2 * margin)
 
         # 多层圆角矩形模拟 blur 阴影 (比 QGraphicsDropShadowEffect 快 10x+)
-        for i, (offset, blur, alpha) in enumerate([
-            (8, 34, 18),
-            (6, 28, 28),
-            (4, 22, 42),
-            (2, 16, 58),
-            (0, 10, 75),
-        ]):
+        for _i, (offset, blur, alpha) in enumerate(
+            [
+                (8, 34, 18),
+                (6, 28, 28),
+                (4, 22, 42),
+                (2, 16, 58),
+                (0, 10, 75),
+            ]
+        ):
             rect = shell_rect.adjusted(
-                -blur + offset, -blur + offset,
-                blur + offset, blur + offset,
+                -blur + offset,
+                -blur + offset,
+                blur + offset,
+                blur + offset,
             )
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QColor(0, 0, 0, alpha))
@@ -2609,10 +2561,7 @@ class MainWindow(QMainWindow):
     # 无边框窗口状态与缩放
     # ========================================================
     def changeEvent(self, event: QEvent):
-        if (
-            event.type() == QEvent.Type.WindowStateChange
-            and hasattr(self, "_outer_layout")
-        ):
+        if event.type() == QEvent.Type.WindowStateChange and hasattr(self, "_outer_layout"):
             maximized = self.isMaximized()
             self._outer_layout.setContentsMargins(
                 0 if maximized else 9,
@@ -2644,7 +2593,8 @@ class MainWindow(QMainWindow):
         # 停止工作线程
         if self._worker and self._worker.isRunning():
             reply = QMessageBox.question(
-                self, "确认退出",
+                self,
+                "确认退出",
                 "绕过任务正在运行, 确定要退出吗?\n浏览器将被关闭.",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )

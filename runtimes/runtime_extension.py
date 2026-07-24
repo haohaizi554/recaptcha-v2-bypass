@@ -93,7 +93,6 @@ class ExtensionRuntime(BaseBypassRuntime):
         # 检查扩展是否已加载
         try:
             # 尝试访问扩展的 service worker 或 popup 页面
-            extension_id = config.NOPECHA_EXTENSION_ID
             pages = self.context.pages
             logger.info(f"[Extension] 当前打开的页面数: {len(pages)}")
         except Exception as e:
@@ -121,7 +120,7 @@ class ExtensionRuntime(BaseBypassRuntime):
         except RuntimeError:
             raise
         except Exception as e:
-            raise RuntimeError(f"[Extension] 点击 checkbox 失败: {e}")
+            raise RuntimeError(f"[Extension] 点击 checkbox 失败: {e}") from e
 
         # Step 2: 等待 NopeCHA 自动求解 (最多 120 秒)
         max_wait = config.EXTENSION_SOLVE_TIMEOUT
@@ -139,19 +138,12 @@ class ExtensionRuntime(BaseBypassRuntime):
                     checkbox_el = frame.locator(".recaptcha-checkbox")
                     aria_checked = await checkbox_el.get_attribute("aria-checked")
                     if aria_checked == "true":
-                        logger.info(
-                            f"[Extension] NopeCHA 求解成功! (耗时 {elapsed}s)"
-                        )
+                        logger.info(f"[Extension] NopeCHA 求解成功! (耗时 {elapsed}s)")
                         return None
             except Exception:
                 pass
 
             if elapsed % 10 == 0:
-                logger.info(
-                    f"[Extension] 等待 NopeCHA 求解中... ({elapsed}/{max_wait}s)"
-                )
+                logger.info(f"[Extension] 等待 NopeCHA 求解中... ({elapsed}/{max_wait}s)")
 
-        raise RuntimeError(
-            f"[Extension] NopeCHA 求解超时 ({max_wait}s), "
-            "扩展可能未正确加载或版本不兼容"
-        )
+        raise RuntimeError(f"[Extension] NopeCHA 求解超时 ({max_wait}s), 扩展可能未正确加载或版本不兼容")

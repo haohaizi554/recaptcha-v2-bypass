@@ -40,6 +40,7 @@ import time
 if platform.system() == "Windows":
     try:
         import ctypes
+
         ctypes.windll.user32.SetProcessDPIAware()
     except Exception:
         pass
@@ -49,9 +50,11 @@ if platform.system() == "Windows":
 # connect_over_cdp 走附加路径, 补丁不生效 (项目记忆已固化此约束)
 try:
     from patchright.async_api import async_playwright
+
     _USE_PATCHRIGHT = True
 except ImportError:
     from playwright.async_api import async_playwright
+
     _USE_PATCHRIGHT = False
 
 import config
@@ -84,9 +87,9 @@ class NativeRuntime(BaseBypassRuntime):
         """查找系统安装的 Chrome 可执行文件"""
         if platform.system() == "Windows":
             candidates = [
-                os.path.join(os.environ.get("ProgramFiles", ""), "Google", "Chrome", "Application", "chrome.exe"),
-                os.path.join(os.environ.get("ProgramFiles(x86)", ""), "Google", "Chrome", "Application", "chrome.exe"),
-                os.path.join(os.environ.get("LocalAppData", ""), "Google", "Chrome", "Application", "chrome.exe"),
+                os.path.join(os.environ.get("PROGRAMFILES", ""), "Google", "Chrome", "Application", "chrome.exe"),
+                os.path.join(os.environ.get("PROGRAMFILES(X86)", ""), "Google", "Chrome", "Application", "chrome.exe"),
+                os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "Application", "chrome.exe"),
             ]
         else:
             candidates = ["/usr/bin/google-chrome", "/usr/bin/chromium-browser"]
@@ -99,7 +102,7 @@ class NativeRuntime(BaseBypassRuntime):
         """获取用户真实 Chrome 的 User Data 目录"""
         system = platform.system()
         if system == "Windows":
-            path = os.path.join(os.environ.get("LocalAppData", ""), "Google", "Chrome", "User Data")
+            path = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Google", "Chrome", "User Data")
         elif system == "Darwin":
             path = os.path.expanduser("~/Library/Application Support/Google/Chrome")
         else:
@@ -114,13 +117,17 @@ class NativeRuntime(BaseBypassRuntime):
             if platform.system() == "Windows":
                 result = subprocess.run(
                     ["tasklist", "/FI", "IMAGENAME eq chrome.exe"],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 return "chrome.exe" in result.stdout
             else:
                 result = subprocess.run(
                     ["pgrep", "-f", "chrome"],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 return len(result.stdout.strip()) > 0
         except Exception:
@@ -132,7 +139,8 @@ class NativeRuntime(BaseBypassRuntime):
             if platform.system() == "Windows":
                 subprocess.run(
                     ["taskkill", "/F", "/IM", "chrome.exe"],
-                    capture_output=True, timeout=10,
+                    capture_output=True,
+                    timeout=10,
                 )
             else:
                 subprocess.run(["pkill", "-f", "chrome"], capture_output=True, timeout=10)
@@ -175,12 +183,12 @@ class NativeRuntime(BaseBypassRuntime):
 
         # 2. 复制 Default profile 的关键文件
         critical_files = [
-            "Cookies",               # 旧版 cookie 路径
-            "Login Data",            # 保存的密码
-            "Preferences",           # 用户偏好设置
-            "History",               # 浏览历史
-            "Web Data",              # 表单数据
-            "TransportSecurity",     # HSTS 数据
+            "Cookies",  # 旧版 cookie 路径
+            "Login Data",  # 保存的密码
+            "Preferences",  # 用户偏好设置
+            "History",  # 浏览历史
+            "Web Data",  # 表单数据
+            "TransportSecurity",  # HSTS 数据
         ]
 
         copied_count = 0
@@ -332,12 +340,13 @@ class NativeRuntime(BaseBypassRuntime):
         """
         try:
             import ctypes
+
             hdc = ctypes.windll.user32.GetDC(0)
             LOGPIXELSX = 88
             dpi = ctypes.windll.gdi32.GetDeviceCaps(hdc, LOGPIXELSX)
             ctypes.windll.user32.ReleaseDC(0, hdc)
             scale = dpi / 96.0
-            logger.info(f"[Native] 系统 DPI: {dpi} ({scale*100:.0f}% 缩放)")
+            logger.info(f"[Native] 系统 DPI: {dpi} ({scale * 100:.0f}% 缩放)")
             return scale
         except Exception as e:
             logger.warning(f"[Native] 获取 DPI 失败, 默认 1.0: {e}")
@@ -351,7 +360,7 @@ class NativeRuntime(BaseBypassRuntime):
               win32gui ShowWindow(SW_MAXIMIZE) 能最大化 OS 窗口,
               但 Chrome 内部状态和 DOM 仍认为窗口最小化 (screenX=-21333)
 
-        解决: 
+        解决:
           1. win32gui 先恢复+最大化 OS 窗口
           2. CDP Browser.setWindowBounds 强制更新 Chrome 内部窗口状态
           3. 等待 DOM 更新 (screenX 从 -21333 变为正常值)
@@ -360,8 +369,8 @@ class NativeRuntime(BaseBypassRuntime):
             return
 
         try:
-            import win32gui
             import win32con
+            import win32gui
 
             # 步骤1: win32gui 恢复+最大化
             hwnd = None
@@ -392,7 +401,7 @@ class NativeRuntime(BaseBypassRuntime):
             left, top, right, bottom = win32gui.GetWindowRect(hwnd)
             logger.info(
                 f"[Native] win32gui 窗口已最大化: ({left}, {top}, {right}, {bottom}), "
-                f"尺寸={right-left}x{bottom-top}"
+                f"尺寸={right - left}x{bottom - top}"
             )
 
         except Exception as e:
@@ -417,9 +426,7 @@ class NativeRuntime(BaseBypassRuntime):
                 await client.detach()
                 return
 
-            bounds_result = await client.send(
-                "Browser.getWindowBounds", {"windowId": window_id}
-            )
+            bounds_result = await client.send("Browser.getWindowBounds", {"windowId": window_id})
             bounds = bounds_result.get("bounds", {})
             state = bounds.get("windowState", "unknown")
             logger.info(
@@ -431,18 +438,16 @@ class NativeRuntime(BaseBypassRuntime):
             # 如果窗口不是最大化/正常状态, 强制设置为最大化
             if state in ("minimized", "unknown"):
                 logger.info("[Native] CDP: 窗口最小化, 强制最大化...")
-                await client.send("Browser.setWindowBounds", {
-                    "windowId": window_id,
-                    "bounds": {"windowState": "maximized"}
-                })
+                await client.send(
+                    "Browser.setWindowBounds", {"windowId": window_id, "bounds": {"windowState": "maximized"}}
+                )
                 await asyncio.sleep(2)
                 logger.info("[Native] CDP: 窗口已通过 CDP 最大化")
             elif state == "normal":
                 logger.info("[Native] CDP: 窗口正常, 强制最大化...")
-                await client.send("Browser.setWindowBounds", {
-                    "windowId": window_id,
-                    "bounds": {"windowState": "maximized"}
-                })
+                await client.send(
+                    "Browser.setWindowBounds", {"windowId": window_id, "bounds": {"windowState": "maximized"}}
+                )
                 await asyncio.sleep(2)
 
             await client.detach()
@@ -463,15 +468,12 @@ class NativeRuntime(BaseBypassRuntime):
                 screen_x = await self.page.evaluate("window.screenX")
                 if screen_x is not None and screen_x > -1000:
                     screen_y = await self.page.evaluate("window.screenY")
-                    logger.info(
-                        f"[Native] DOM window 已更新: screenX={screen_x}, "
-                        f"screenY={screen_y} (第 {i+1}s)"
-                    )
+                    logger.info(f"[Native] DOM window 已更新: screenX={screen_x}, screenY={screen_y} (第 {i + 1}s)")
                     return True
             except Exception:
                 pass
             if (i + 1) % 2 == 0:
-                logger.info(f"[Native] 等待 DOM window 更新... (第 {i+1}/{timeout}s)")
+                logger.info(f"[Native] 等待 DOM window 更新... (第 {i + 1}/{timeout}s)")
         return False
 
     # ========================================================
@@ -511,13 +513,17 @@ class NativeRuntime(BaseBypassRuntime):
             if diagnostics.get("cdc_traces", 0) > 0:
                 issues.append(f"检测到 {diagnostics['cdc_traces']} 个 cdc_ 痕迹")
 
-            logger.info(f"[Native] webdriver: {diagnostics.get('webdriver')} (type: {diagnostics.get('webdriver_type')})")
+            logger.info(
+                f"[Native] webdriver: {diagnostics.get('webdriver')} (type: {diagnostics.get('webdriver_type')})"
+            )
             logger.info(f"[Native] UA: {diagnostics.get('userAgent', '')[:80]}")
             logger.info(f"[Native] platform: {diagnostics.get('platform')}")
             logger.info(f"[Native] languages: {diagnostics.get('languages')}")
             logger.info(f"[Native] hardwareConcurrency: {diagnostics.get('hardwareConcurrency')}")
             logger.info(f"[Native] plugins: {diagnostics.get('plugins_count')} 个")
-            logger.info(f"[Native] WebGL: {diagnostics.get('webglVendor', '?')} / {diagnostics.get('webglRenderer', '?')[:60]}")
+            logger.info(
+                f"[Native] WebGL: {diagnostics.get('webglVendor', '?')} / {diagnostics.get('webglRenderer', '?')[:60]}"
+            )
             logger.info(f"[Native] cdc_ 痕迹: {diagnostics.get('cdc_traces', 0)} 个")
 
             if issues:
@@ -620,8 +626,8 @@ class NativeRuntime(BaseBypassRuntime):
         screen_y_phys = css_screen_y * dpi_scale
 
         # 8. 诊断日志
-        logger.info(f"[Native] ====== 坐标计算诊断 (v3: DPI+screenX) ======")
-        logger.info(f"[Native] DPI 缩放: {dpi_scale} ({dpi_scale*100:.0f}%)")
+        logger.info("[Native] ====== 坐标计算诊断 (v3: DPI+screenX) ======")
+        logger.info(f"[Native] DPI 缩放: {dpi_scale} ({dpi_scale * 100:.0f}%)")
         logger.info(f"[Native] devicePixelRatio: {win['dpr']}")
         logger.info(f"[Native] DOM screen 尺寸: {win['screenW']}x{win['screenH']} (CSS)")
         logger.info(f"[Native] DOM viewport 尺寸: {win['innerW']}x{win['innerH']} (CSS)")
@@ -636,20 +642,18 @@ class NativeRuntime(BaseBypassRuntime):
         # 9. 边界检查 + PyAutoGUI 屏幕尺寸
         try:
             import pyautogui
+
             screen_w, screen_h = pyautogui.size()
             logger.info(f"[Native] PyAutoGUI 屏幕尺寸: {screen_w}x{screen_h}")
             if screen_x_phys < 0 or screen_y_phys < 0:
-                logger.warning(
-                    f"[Native] 物理坐标为负值: ({screen_x_phys:.1f}, {screen_y_phys:.1f})"
-                )
+                logger.warning(f"[Native] 物理坐标为负值: ({screen_x_phys:.1f}, {screen_y_phys:.1f})")
             if screen_x_phys > screen_w or screen_y_phys > screen_h:
                 logger.warning(
-                    f"[Native] 物理坐标超出屏幕 ({screen_w}x{screen_h}): "
-                    f"({screen_x_phys:.1f}, {screen_y_phys:.1f})"
+                    f"[Native] 物理坐标超出屏幕 ({screen_w}x{screen_h}): ({screen_x_phys:.1f}, {screen_y_phys:.1f})"
                 )
         except Exception:
             pass
-        logger.info(f"[Native] =============================")
+        logger.info("[Native] =============================")
 
         return (screen_x_phys, screen_y_phys)
 
@@ -733,8 +737,8 @@ class NativeRuntime(BaseBypassRuntime):
         返回: (physical_x, physical_y) 或 None (校准失败)
         """
         try:
-            import win32gui
             import pyautogui
+            import win32gui
 
             # 1. 确保 Chrome 在前台
             if not self._verify_chrome_foreground():
@@ -765,8 +769,7 @@ class NativeRuntime(BaseBypassRuntime):
                 f"尺寸={win_w_phys}x{win_h_phys}"
             )
             logger.info(
-                f"[Native] Win32校准: 客户端原点=({client_x},{client_y}), "
-                f"尺寸={client_w}x{client_h} (物理像素)"
+                f"[Native] Win32校准: 客户端原点=({client_x},{client_y}), 尺寸={client_w}x{client_h} (物理像素)"
             )
 
             # 5. 获取 DOM 窗口信息 (CSS 像素)
@@ -793,13 +796,10 @@ class NativeRuntime(BaseBypassRuntime):
             else:
                 dpi_scale = self._get_dpi_scale()
                 dpi_x = dpi_y = dpi_scale
-                logger.warning(
-                    f"[Native] Win32校准: DOM outer 尺寸异常, 使用系统 DPI={dpi_scale}"
-                )
+                logger.warning(f"[Native] Win32校准: DOM outer 尺寸异常, 使用系统 DPI={dpi_scale}")
 
             logger.info(
-                f"[Native] Win32校准: 真实 DPI=({dpi_x:.4f},{dpi_y:.4f}) "
-                f"(系统 DPI={self._get_dpi_scale():.4f})"
+                f"[Native] Win32校准: 真实 DPI=({dpi_x:.4f},{dpi_y:.4f}) (系统 DPI={self._get_dpi_scale():.4f})"
             )
 
             # 7. 计算 Chrome UI 高度 (标签栏 + 地址栏, 全在顶部)
@@ -862,10 +862,7 @@ class NativeRuntime(BaseBypassRuntime):
             # 11. 边界检查
             screen_w, screen_h = pyautogui.size()
             if checkbox_phys_x < 0 or checkbox_phys_y < 0:
-                logger.warning(
-                    f"[Native] Win32校准: checkbox 坐标为负 "
-                    f"({checkbox_phys_x:.1f},{checkbox_phys_y:.1f})"
-                )
+                logger.warning(f"[Native] Win32校准: checkbox 坐标为负 ({checkbox_phys_x:.1f},{checkbox_phys_y:.1f})")
                 return None
             if checkbox_phys_x > screen_w or checkbox_phys_y > screen_h:
                 logger.warning(
@@ -906,6 +903,7 @@ class NativeRuntime(BaseBypassRuntime):
         except Exception as e:
             logger.warning(f"[Native] Win32校准异常: {e}")
             import traceback
+
             logger.warning(f"[Native] {traceback.format_exc()}")
             return None
 
@@ -932,9 +930,10 @@ class NativeRuntime(BaseBypassRuntime):
         返回: (physical_x, physical_y) 或 None (校准失败)
         """
         try:
+            import os
+
             import numpy as np
             import pyautogui
-            import os
 
             # 0. 关键: 确保 Chrome 在前台 (pyautogui.screenshot 捕获物理屏幕)
             # 如果 Chrome 不在前台, 截图会捕获到其他应用 (如 TRAE IDE), 导致校准完全失败
@@ -1014,10 +1013,7 @@ class NativeRuntime(BaseBypassRuntime):
 
             # 8. 获取屏幕尺寸
             screen_w, screen_h = pyautogui.size()
-            logger.info(
-                f"[Native] 截图差异: 差异像素={total_changed}, "
-                f"屏幕尺寸={screen_w}x{screen_h}"
-            )
+            logger.info(f"[Native] 截图差异: 差异像素={total_changed}, 屏幕尺寸={screen_w}x{screen_h}")
 
             # 预期变化量: 视口面积 * DPI^2 (至少视口的一半应被覆盖)
             expected_min = int(viewport["w"] * viewport["h"] * dpi_scale * dpi_scale * 0.3)
@@ -1028,9 +1024,7 @@ class NativeRuntime(BaseBypassRuntime):
 
             if total_changed < expected_min:
                 # 保存调试截图
-                debug_dir = os.path.join(
-                    os.path.dirname(os.path.dirname(__file__)), "screenshots"
-                )
+                debug_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "screenshots")
                 os.makedirs(debug_dir, exist_ok=True)
                 screen_a.save(os.path.join(debug_dir, "calib_before.png"))
                 screen_b.save(os.path.join(debug_dir, "calib_after.png"))
@@ -1081,8 +1075,7 @@ class NativeRuntime(BaseBypassRuntime):
 
             if w_ratio < 0.7 or w_ratio > 1.3 or h_ratio < 0.7 or h_ratio > 1.3:
                 logger.warning(
-                    f"[Native] 截图差异: 视口尺寸比例异常 "
-                    f"(w={w_ratio:.2f}, h={h_ratio:.2f}), 校准可能不准确"
+                    f"[Native] 截图差异: 视口尺寸比例异常 (w={w_ratio:.2f}, h={h_ratio:.2f}), 校准可能不准确"
                 )
 
             # 11. 计算 checkbox 物理坐标
@@ -1109,10 +1102,7 @@ class NativeRuntime(BaseBypassRuntime):
 
             # 12. 边界检查
             if checkbox_phys_x < 0 or checkbox_phys_y < 0:
-                logger.warning(
-                    f"[Native] 截图差异: checkbox 坐标为负 "
-                    f"({checkbox_phys_x:.1f},{checkbox_phys_y:.1f})"
-                )
+                logger.warning(f"[Native] 截图差异: checkbox 坐标为负 ({checkbox_phys_x:.1f},{checkbox_phys_y:.1f})")
                 return None
             if checkbox_phys_x > screen_w or checkbox_phys_y > screen_h:
                 logger.warning(
@@ -1135,6 +1125,7 @@ class NativeRuntime(BaseBypassRuntime):
         except Exception as e:
             logger.warning(f"[Native] 截图差异校准异常: {e}")
             import traceback
+
             logger.warning(f"[Native] {traceback.format_exc()}")
             await self._remove_calibration_markers()
             return None
@@ -1165,18 +1156,15 @@ class NativeRuntime(BaseBypassRuntime):
         """
         try:
             import ctypes
+
             PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
-            handle = ctypes.windll.kernel32.OpenProcess(
-                PROCESS_QUERY_LIMITED_INFORMATION, False, pid
-            )
+            handle = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
             if not handle:
                 return ""
             try:
                 buf = ctypes.create_unicode_buffer(1024)
                 size = ctypes.c_uint32(1024)
-                if ctypes.windll.kernel32.QueryFullProcessImageNameW(
-                    handle, 0, buf, ctypes.byref(size)
-                ):
+                if ctypes.windll.kernel32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
                     return os.path.basename(buf.value).lower()
                 return ""
             finally:
@@ -1201,7 +1189,6 @@ class NativeRuntime(BaseBypassRuntime):
             return None
 
         import win32gui
-        import win32con
         import win32process
 
         candidates = []
@@ -1242,10 +1229,7 @@ class NativeRuntime(BaseBypassRuntime):
 
         if not candidates:
             logger.warning("[Native] EnumWindows 未找到 chrome.exe 主窗口")
-            logger.warning(
-                "[Native] 所有 Chrome_WidgetWin_1 窗口均非 chrome.exe "
-                "(可能被 Electron 应用占据)"
-            )
+            logger.warning("[Native] 所有 Chrome_WidgetWin_1 窗口均非 chrome.exe (可能被 Electron 应用占据)")
             return None
 
         candidates.sort(key=lambda c: c[5], reverse=True)
@@ -1274,10 +1258,11 @@ class NativeRuntime(BaseBypassRuntime):
         附加技巧: 发送 Alt 键事件重置前台锁超时计时器
         """
         try:
-            import win32gui
-            import win32con
-            import win32process
             import ctypes
+
+            import win32con
+            import win32gui
+            import win32process
 
             # 获取前台窗口及其线程
             foreground_hwnd = win32gui.GetForegroundWindow()
@@ -1291,17 +1276,15 @@ class NativeRuntime(BaseBypassRuntime):
             attached = False
             if foreground_thread_id != target_thread_id:
                 try:
-                    ctypes.windll.user32.AttachThreadInput(
-                        target_thread_id, foreground_thread_id, True
-                    )
+                    ctypes.windll.user32.AttachThreadInput(target_thread_id, foreground_thread_id, True)
                     attached = True
                 except Exception:
                     pass
 
             # 发送 Alt 键重置前台锁 (模拟用户输入)
             try:
-                ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)       # Alt down
-                ctypes.windll.user32.keybd_event(0x12, 0, 0x0002, 0)   # Alt up
+                ctypes.windll.user32.keybd_event(0x12, 0, 0, 0)  # Alt down
+                ctypes.windll.user32.keybd_event(0x12, 0, 0x0002, 0)  # Alt up
             except Exception:
                 pass
 
@@ -1319,9 +1302,7 @@ class NativeRuntime(BaseBypassRuntime):
             # 解除 AttachThreadInput
             if attached:
                 try:
-                    ctypes.windll.user32.AttachThreadInput(
-                        target_thread_id, foreground_thread_id, False
-                    )
+                    ctypes.windll.user32.AttachThreadInput(target_thread_id, foreground_thread_id, False)
                 except Exception:
                     pass
 
@@ -1337,17 +1318,21 @@ class NativeRuntime(BaseBypassRuntime):
                 # 临时将前台锁超时设为 0
                 old_timeout = ctypes.c_uint32()
                 ctypes.windll.user32.SystemParametersInfoW(
-                    0x2000, 0, ctypes.byref(old_timeout), 0  # SPI_GETFOREGROUNDLOCKTIMEOUT
+                    0x2000,
+                    0,
+                    ctypes.byref(old_timeout),
+                    0,  # SPI_GETFOREGROUNDLOCKTIMEOUT
                 )
                 ctypes.windll.user32.SystemParametersInfoW(
-                    0x2001, 0, 0, 0  # SPI_SETFOREGROUNDLOCKTIMEOUT, 0
+                    0x2001,
+                    0,
+                    0,
+                    0,  # SPI_SETFOREGROUNDLOCKTIMEOUT, 0
                 )
                 win32gui.SetForegroundWindow(hwnd)
                 time.sleep(0.3)
                 # 恢复原超时
-                ctypes.windll.user32.SystemParametersInfoW(
-                    0x2001, 0, ctypes.byref(old_timeout), 0
-                )
+                ctypes.windll.user32.SystemParametersInfoW(0x2001, 0, ctypes.byref(old_timeout), 0)
             except Exception:
                 pass
 
@@ -1370,8 +1355,8 @@ class NativeRuntime(BaseBypassRuntime):
               必须用 AttachThreadInput 强制切换.
         """
         try:
-            import win32gui
             import win32con
+            import win32gui
 
             hwnd = self._find_main_chrome_window()
             if not hwnd:
@@ -1389,28 +1374,26 @@ class NativeRuntime(BaseBypassRuntime):
             if foreground_hwnd == hwnd:
                 left, top, right, bottom = win32gui.GetWindowRect(hwnd)
                 logger.info(
-                    f"[Native] Chrome 已在前台: ({left}, {top}, {right}, {bottom}), "
-                    f"尺寸={right-left}x{bottom-top}"
+                    f"[Native] Chrome 已在前台: ({left}, {top}, {right}, {bottom}), 尺寸={right - left}x{bottom - top}"
                 )
                 return True
 
             # Chrome 不在前台, 使用 AttachThreadInput 强制切换
             logger.info(
-                f"[Native] Chrome 不在前台 (当前前台 hwnd={foreground_hwnd}), "
-                f"使用 AttachThreadInput 强制切换..."
+                f"[Native] Chrome 不在前台 (当前前台 hwnd={foreground_hwnd}), 使用 AttachThreadInput 强制切换..."
             )
 
             # 最多重试 3 次
             for retry in range(3):
                 if self._force_foreground(hwnd):
-                    logger.info(f"[Native] ✓ Chrome 已切换到前台 (第 {retry+1} 次尝试)")
+                    logger.info(f"[Native] ✓ Chrome 已切换到前台 (第 {retry + 1} 次尝试)")
                     left, top, right, bottom = win32gui.GetWindowRect(hwnd)
                     logger.info(
                         f"[Native] Chrome 主窗口矩形: ({left}, {top}, {right}, {bottom}), "
-                        f"尺寸={right-left}x{bottom-top}"
+                        f"尺寸={right - left}x{bottom - top}"
                     )
                     return True
-                logger.warning(f"[Native] 前台切换失败 (第 {retry+1} 次), 重试...")
+                logger.warning(f"[Native] 前台切换失败 (第 {retry + 1} 次), 重试...")
                 time.sleep(1)
 
             logger.error("[Native] 3 次尝试均无法将 Chrome 切换到前台")
@@ -1450,10 +1433,7 @@ class NativeRuntime(BaseBypassRuntime):
                 # 窗口状态正常, 无需修复
                 return True
 
-            logger.warning(
-                f"[Native] Chrome DOM 窗口状态异常 (screenX={screen_x}), "
-                f"重新同步窗口状态..."
-            )
+            logger.warning(f"[Native] Chrome DOM 窗口状态异常 (screenX={screen_x}), 重新同步窗口状态...")
         except Exception as e:
             logger.warning(f"[Native] 检查 DOM 窗口状态失败: {e}")
 
@@ -1471,14 +1451,10 @@ class NativeRuntime(BaseBypassRuntime):
             screen_x = await self.page.evaluate("window.screenX")
             screen_y = await self.page.evaluate("window.screenY")
             if screen_x is not None and screen_x > -1000:
-                logger.info(
-                    f"[Native] ✓ 窗口状态已恢复: screenX={screen_x}, screenY={screen_y}"
-                )
+                logger.info(f"[Native] ✓ 窗口状态已恢复: screenX={screen_x}, screenY={screen_y}")
                 return True
             else:
-                logger.error(
-                    f"[Native] 窗口状态恢复失败: screenX={screen_x}"
-                )
+                logger.error(f"[Native] 窗口状态恢复失败: screenX={screen_x}")
                 return False
         except Exception as e:
             logger.error(f"[Native] 最终窗口状态验证失败: {e}")
@@ -1593,8 +1569,8 @@ class NativeRuntime(BaseBypassRuntime):
                 if anchor_frame:
                     checked = anchor_frame.locator(".recaptcha-checkbox-checked")
                     if await checked.count() > 0:
-                        logger.info(f"[Native] checkbox 已勾选! (第 {i+1}s)")
-                        await self._take_screenshot(f"native_passed_{i+1}")
+                        logger.info(f"[Native] checkbox 已勾选! (第 {i + 1}s)")
+                        await self._take_screenshot(f"native_passed_{i + 1}")
                         return "passed"
             except Exception as e:
                 logger.debug(f"[Native] 检测 checkbox 状态异常: {e}")
@@ -1607,9 +1583,9 @@ class NativeRuntime(BaseBypassRuntime):
                 if bframe:
                     # 检测 bframe 内的挑战内容元素
                     challenge_selectors = [
-                        ".rc-imageselect-challenge",   # 图像挑战容器
-                        ".rc-imageselect-instructions", # 提示文本
-                        ".rc-imageselect-target",       # 图像网格
+                        ".rc-imageselect-challenge",  # 图像挑战容器
+                        ".rc-imageselect-instructions",  # 提示文本
+                        ".rc-imageselect-target",  # 图像网格
                     ]
                     challenge_visible = False
                     for sel in challenge_selectors:
@@ -1617,16 +1593,14 @@ class NativeRuntime(BaseBypassRuntime):
                             el = bframe.locator(sel).first
                             if await el.count() > 0:
                                 if await el.is_visible():
-                                    logger.info(
-                                        f"[Native] 检测到可见挑战元素 '{sel}' (第 {i+1}s)"
-                                    )
+                                    logger.info(f"[Native] 检测到可见挑战元素 '{sel}' (第 {i + 1}s)")
                                     challenge_visible = True
                                     break
                         except Exception:
                             continue
 
                     if challenge_visible:
-                        await self._take_screenshot(f"native_challenge_{i+1}")
+                        await self._take_screenshot(f"native_challenge_{i + 1}")
                         return "challenge"
             except Exception as e:
                 logger.debug(f"[Native] 检测 bframe 异常: {e}")
@@ -1637,7 +1611,7 @@ class NativeRuntime(BaseBypassRuntime):
                 if anchor_frame:
                     expired = anchor_frame.locator(".recaptcha-checkbox-expired")
                     if await expired.count() > 0:
-                        logger.warning(f"[Native] checkbox 显示过期状态 (第 {i+1}s)")
+                        logger.warning(f"[Native] checkbox 显示过期状态 (第 {i + 1}s)")
                         # 过期不是挑战, 是超时, 继续等待或重试
             except Exception:
                 pass
@@ -1649,17 +1623,17 @@ class NativeRuntime(BaseBypassRuntime):
                 if anchor_frame:
                     spinner = anchor_frame.locator(".recaptcha-checkbox-spinner")
                     if await spinner.count() > 0:
-                        logger.info(f"[Native] checkbox 处于加载状态 (spinner), reCAPTCHA 正在验证 (第 {i+1}s)")
+                        logger.info(f"[Native] checkbox 处于加载状态 (spinner), reCAPTCHA 正在验证 (第 {i + 1}s)")
                     elif i == 0:
-                        logger.info(f"[Native] checkbox 未显示 spinner, 可能点击未生效 (第 {i+1}s)")
+                        logger.info(f"[Native] checkbox 未显示 spinner, 可能点击未生效 (第 {i + 1}s)")
             except Exception:
                 pass
 
             # 每 5 秒输出一次详细日志 (避免 30 秒等待期间日志过于稀疏)
             if (i + 1) % 5 == 0:
-                logger.info(f"[Native] 等待结果... ({i+1}/{wait_time}s)")
+                logger.info(f"[Native] 等待结果... ({i + 1}/{wait_time}s)")
             else:
-                logger.debug(f"[Native] 等待结果... ({i+1}/{wait_time}s)")
+                logger.debug(f"[Native] 等待结果... ({i + 1}/{wait_time}s)")
 
         logger.warning(f"[Native] 结果检测超时 ({wait_time}s)")
         await self._take_screenshot("native_timeout")
@@ -1694,6 +1668,7 @@ class NativeRuntime(BaseBypassRuntime):
 
         try:
             from runtimes.runtime_image import ImageRuntime
+
             image_runtime = ImageRuntime()
             # 共享浏览器会话 (launch_persistent_context 模式)
             image_runtime.playwright = self.playwright
@@ -1708,6 +1683,7 @@ class NativeRuntime(BaseBypassRuntime):
             async def _skip_checkbox():
                 logger.info("[Native] Fallback: 跳过 checkbox 点击 (挑战弹窗已显示)")
                 return True
+
             image_runtime._click_checkbox = _skip_checkbox
 
             sitekey = await self.extract_sitekey()
@@ -1716,7 +1692,9 @@ class NativeRuntime(BaseBypassRuntime):
             # ImageRuntime.solve_recaptcha 返回 None 表示浏览器内通过 (token 已自动提交)
             # 返回 token 字符串表示需要注入
             # 如果 ImageRuntime 内部所有尝试都失败, 它会 raise RuntimeError
-            logger.info(f"[Native] 图像识别 Fallback 完成, result={'None(浏览器内通过)' if result is None else 'token'}")
+            logger.info(
+                f"[Native] 图像识别 Fallback 完成, result={'None(浏览器内通过)' if result is None else 'token'}"
+            )
             return result
         except RuntimeError:
             # 图像识别失败的 RuntimeError 直接向上传播
@@ -1774,7 +1752,9 @@ class NativeRuntime(BaseBypassRuntime):
                     try:
                         spinner = anchor_frame.locator(".recaptcha-checkbox-spinner")
                         if await spinner.count() > 0:
-                            logger.info("[Native] checkbox 处于 spinner 状态 (前次点击正在验证), 等待完成 (最多 30s)...")
+                            logger.info(
+                                "[Native] checkbox 处于 spinner 状态 (前次点击正在验证), 等待完成 (最多 30s)..."
+                            )
                             spinner_result = await self._detect_result_by_dom(30)
                             if spinner_result == "passed":
                                 logger.info("[Native] reCAPTCHA spinner 验证通过!")
@@ -1807,25 +1787,19 @@ class NativeRuntime(BaseBypassRuntime):
                 win32_pos = await self._get_checkbox_position_by_win32()
                 if win32_pos:
                     screen_x, screen_y = win32_pos
-                    logger.info(
-                        f"[Native] 使用 Win32 校准坐标: ({screen_x:.1f}, {screen_y:.1f})"
-                    )
+                    logger.info(f"[Native] 使用 Win32 校准坐标: ({screen_x:.1f}, {screen_y:.1f})")
                 else:
                     # Fallback 1: 截图差异校准 (DPI 无关, 经验性映射)
                     logger.warning("[Native] Win32 校准失败, 回退到截图差异法...")
                     marker_pos = await self._get_checkbox_position_by_markers()
                     if marker_pos:
                         screen_x, screen_y = marker_pos
-                        logger.info(
-                            f"[Native] 使用截图差异校准坐标: ({screen_x:.1f}, {screen_y:.1f})"
-                        )
+                        logger.info(f"[Native] 使用截图差异校准坐标: ({screen_x:.1f}, {screen_y:.1f})")
                     else:
                         # Fallback 2: 坐标计算 (v3: DPI + screenX)
                         logger.warning("[Native] 截图差异校准失败, 回退到坐标计算...")
                         screen_x, screen_y = await self._get_checkbox_screen_position()
-                        logger.info(
-                            f"[Native] 使用坐标计算: ({screen_x:.1f}, {screen_y:.1f})"
-                        )
+                        logger.info(f"[Native] 使用坐标计算: ({screen_x:.1f}, {screen_y:.1f})")
                 self._checkbox_screen_pos = (screen_x, screen_y)
             except Exception as e:
                 logger.error(f"[Native] 获取 checkbox 坐标失败: {e}")
@@ -1846,28 +1820,54 @@ class NativeRuntime(BaseBypassRuntime):
             # 在 150% DPI 下 30px ≈ 20 CSS px, checkbox 约 28 CSS px
             # 大范围覆盖确保即使坐标计算有 ~120px 偏差也能命中
             spiral_offsets = [
-                (0, 0),           # 初始坐标
-                (30, 0), (30, 30), (0, 30), (-30, 30),
-                (-30, 0), (-30, -30), (0, -30), (30, -30),
-                (60, 0), (60, 60), (0, 60), (-60, 60),
-                (-60, 0), (-60, -60), (0, -60), (60, -60),
-                (90, 0), (90, 90), (0, 90), (-90, 90),
-                (-90, 0), (-90, -90), (0, -90), (90, -90),
-                (120, 0), (120, 120), (0, 120), (-120, 120),
-                (-120, 0), (-120, -120), (0, -120), (120, -120),
-                (150, 0), (150, 150), (0, 150), (-150, 150),
-                (-150, 0), (-150, -150), (0, -150), (150, -150),
+                (0, 0),  # 初始坐标
+                (30, 0),
+                (30, 30),
+                (0, 30),
+                (-30, 30),
+                (-30, 0),
+                (-30, -30),
+                (0, -30),
+                (30, -30),
+                (60, 0),
+                (60, 60),
+                (0, 60),
+                (-60, 60),
+                (-60, 0),
+                (-60, -60),
+                (0, -60),
+                (60, -60),
+                (90, 0),
+                (90, 90),
+                (0, 90),
+                (-90, 90),
+                (-90, 0),
+                (-90, -90),
+                (0, -90),
+                (90, -90),
+                (120, 0),
+                (120, 120),
+                (0, 120),
+                (-120, 120),
+                (-120, 0),
+                (-120, -120),
+                (0, -120),
+                (120, -120),
+                (150, 0),
+                (150, 150),
+                (0, 150),
+                (-150, 150),
+                (-150, 0),
+                (-150, -150),
+                (0, -150),
+                (150, -150),
             ]
 
             # 如果前一次尝试找到了命中偏移, 优先尝试该偏移
             if self._spiral_hit_offset:
                 saved = self._spiral_hit_offset
-                spiral_offsets = [saved] + [
-                    o for o in spiral_offsets if o != saved
-                ]
-                logger.info(
-                    f"[Native] 使用上次命中偏移优先: ({saved[0]},{saved[1]})"
-                )
+                spiral_offsets = [saved] + [o for o in spiral_offsets if o != saved]
+                logger.info(f"[Native] 使用上次命中偏移优先: ({saved[0]},{saved[1]})")
 
             click_hit = False
             for i, (dx, dy) in enumerate(spiral_offsets):
@@ -1888,7 +1888,7 @@ class NativeRuntime(BaseBypassRuntime):
                     if click_result and click_result.get("received"):
                         click_hit = True
                         logger.info(
-                            f"[Native] ✓ 螺旋搜索第 {i+1} 个位置命中! "
+                            f"[Native] ✓ 螺旋搜索第 {i + 1} 个位置命中! "
                             f"偏移=({dx},{dy}), 坐标=({target_x:.1f},{target_y:.1f})"
                         )
                         # 记录成功偏移, 供后续尝试直接使用
@@ -1896,19 +1896,14 @@ class NativeRuntime(BaseBypassRuntime):
                         break
                     else:
                         if i == 0:
-                            logger.warning(
-                                f"[Native] 初始坐标未命中, 启动螺旋搜索..."
-                            )
+                            logger.warning("[Native] 初始坐标未命中, 启动螺旋搜索...")
                         elif i % 4 == 0:
-                            logger.info(
-                                f"[Native] 螺旋搜索 {i+1}/{len(spiral_offsets)}: "
-                                f"偏移=({dx},{dy}) 未命中"
-                            )
+                            logger.info(f"[Native] 螺旋搜索 {i + 1}/{len(spiral_offsets)}: 偏移=({dx},{dy}) 未命中")
                 except Exception as e:
                     if "Target page, context or browser has been closed" in str(e):
                         logger.error(f"[Native] 浏览器已关闭, 终止螺旋搜索: {e}")
                         raise RuntimeError(f"浏览器在螺旋搜索期间关闭: {e}") from e
-                    logger.warning(f"[Native] 螺旋搜索位置 {i+1} 异常: {e}")
+                    logger.warning(f"[Native] 螺旋搜索位置 {i + 1} 异常: {e}")
                     continue
 
             if not click_hit:

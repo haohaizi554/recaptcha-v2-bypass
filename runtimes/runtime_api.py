@@ -49,16 +49,10 @@ class APIRuntime(BaseBypassRuntime):
         # 验证 API Key
         if self.provider == "2captcha":
             if not config.TWOCAPTCHA_API_KEY or "YOUR_" in config.TWOCAPTCHA_API_KEY:
-                raise ValueError(
-                    "[API] 2captcha API Key 未配置, "
-                    "请在 config.py 中设置 TWOCAPTCHA_API_KEY"
-                )
+                raise ValueError("[API] 2captcha API Key 未配置, 请在 config.py 中设置 TWOCAPTCHA_API_KEY")
         elif self.provider == "capsolver":
             if not config.CAPSOLVER_API_KEY or "YOUR_" in config.CAPSOLVER_API_KEY:
-                raise ValueError(
-                    "[API] CapSolver API Key 未配置, "
-                    "请在 config.py 中设置 CAPSOLVER_API_KEY"
-                )
+                raise ValueError("[API] CapSolver API Key 未配置, 请在 config.py 中设置 CAPSOLVER_API_KEY")
         else:
             raise ValueError(f"[API] 不支持的 provider: {self.provider}")
 

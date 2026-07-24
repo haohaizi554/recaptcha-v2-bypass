@@ -22,8 +22,8 @@
 
 import asyncio
 import logging
-import sys
 import os
+import sys
 
 # 添加项目根目录到路径
 PROJECT_ROOT = r"d:\desktop\successfactor"

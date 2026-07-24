@@ -8,6 +8,7 @@ reCAPTCHA v2 验证码求解模块
 
 import logging
 import time
+
 import requests
 
 logger = logging.getLogger(__name__)
@@ -32,13 +33,17 @@ class TwoCaptchaSolver:
         logger.info("[2captcha] 提交 reCAPTCHA v2 求解任务...")
 
         # 提交任务
-        resp = requests.post(self.submit_url, data={
-            "key": self.api_key,
-            "method": "userrecaptcha",
-            "googlekey": sitekey,
-            "pageurl": page_url,
-            "json": 1,
-        }, timeout=30)
+        resp = requests.post(
+            self.submit_url,
+            data={
+                "key": self.api_key,
+                "method": "userrecaptcha",
+                "googlekey": sitekey,
+                "pageurl": page_url,
+                "json": 1,
+            },
+            timeout=30,
+        )
         data = resp.json()
 
         if data.get("status") != 1:
@@ -51,12 +56,16 @@ class TwoCaptchaSolver:
         start = time.time()
         while time.time() - start < timeout:
             time.sleep(5)
-            resp = requests.get(self.result_url, params={
-                "key": self.api_key,
-                "action": "get",
-                "id": task_id,
-                "json": 1,
-            }, timeout=30)
+            resp = requests.get(
+                self.result_url,
+                params={
+                    "key": self.api_key,
+                    "action": "get",
+                    "id": task_id,
+                    "json": 1,
+                },
+                timeout=30,
+            )
             data = resp.json()
 
             if data.get("status") == 1:
@@ -91,14 +100,18 @@ class CapSolverSolver:
         logger.info("[CapSolver] 提交 reCAPTCHA v2 求解任务...")
 
         # 创建任务
-        resp = requests.post(self.create_url, json={
-            "clientKey": self.api_key,
-            "task": {
-                "type": "ReCaptchaV2TaskProxyLess",
-                "websiteURL": page_url,
-                "websiteKey": sitekey,
+        resp = requests.post(
+            self.create_url,
+            json={
+                "clientKey": self.api_key,
+                "task": {
+                    "type": "ReCaptchaV2TaskProxyLess",
+                    "websiteURL": page_url,
+                    "websiteKey": sitekey,
+                },
             },
-        }, timeout=30)
+            timeout=30,
+        )
         data = resp.json()
 
         if data.get("errorId") != 0:
@@ -111,10 +124,14 @@ class CapSolverSolver:
         start = time.time()
         while time.time() - start < timeout:
             time.sleep(3)
-            resp = requests.post(self.result_url, json={
-                "clientKey": self.api_key,
-                "taskId": task_id,
-            }, timeout=30)
+            resp = requests.post(
+                self.result_url,
+                json={
+                    "clientKey": self.api_key,
+                    "taskId": task_id,
+                },
+                timeout=30,
+            )
             data = resp.json()
 
             status = data.get("status", "")
@@ -134,8 +151,7 @@ class CapSolverSolver:
 # ============================================================
 # 统一入口
 # ============================================================
-def solve_recaptcha(method: str, sitekey: str, page_url: str,
-                    twocaptcha_key: str = "", capsolver_key: str = "") -> str:
+def solve_recaptcha(method: str, sitekey: str, page_url: str, twocaptcha_key: str = "", capsolver_key: str = "") -> str:
     """
     根据 method 选择求解器, 返回 reCAPTCHA token
     method: "2captcha" | "capsolver"
