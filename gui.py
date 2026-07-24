@@ -2290,6 +2290,7 @@ class MainWindow(QMainWindow):
     # 启动/停止
     # ========================================================
     def _on_start(self):
+        """启动按钮回调: 创建 runtime → 启动 BypassWorker 线程 → 切换 UI 到运行态"""
         if not self._selected_key:
             return
 
@@ -2325,6 +2326,7 @@ class MainWindow(QMainWindow):
         self._worker.start()
 
     def _on_stop(self):
+        """停止按钮回调: 通知 worker 关闭浏览器, 切换 UI 到停止态"""
         if self._worker and self._worker.isRunning():
             self._worker.stop()
             self._status_label.setText("正在停止...")
@@ -2393,6 +2395,7 @@ class MainWindow(QMainWindow):
         return None
 
     def _set_running_ui(self, running: bool):
+        """切换 UI 运行/空闲态: 显示/隐藏启动停止按钮, 禁用方案卡片"""
         self._start_btn.setVisible(not running)
         self._stop_btn.setVisible(running)
         self._progress.setVisible(running)
@@ -2461,6 +2464,7 @@ class MainWindow(QMainWindow):
             scrollbar.setValue(scrollbar.maximum())
 
     def _on_status(self, status: str):
+        """状态信号回调: 更新状态标签文本和颜色, 同步状态指示灯"""
         status_map = {
             "running": ("运行中...", "statusRunning"),
             "success": ("绕过成功!", "statusSuccess"),
@@ -2474,6 +2478,7 @@ class MainWindow(QMainWindow):
         self._status_indicator.set_state(status if status in status_map else "idle")
 
     def _on_finished(self, success: bool):
+        """完成信号回调: 计算耗时, 写入 SQLite 历史, 更新 UI 状态"""
         self._set_running_ui(False)
         self._progress.setVisible(False)
 
