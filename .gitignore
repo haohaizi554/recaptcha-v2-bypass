@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Runtime State (含敏感 cookies/session 数据)
+.stealth_state/
+.nav_link_cache.json
+
+# Database
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Screenshots (运行时生成, 体积大)
+screenshots/
+
+# Logs
+*.log
+e2e_test_*.log
+
+# OS Files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Model Cache (YOLO 自动下载的预训练模型)
+*.pt
+!models/recaptcha_cls_best.pt
+
+# Environment Variables
+.env
+.env.local
+
+# Test Reports
+screenshots/e2e_reports/
+
+# Temporary Files
+*.tmp
+*.bak
