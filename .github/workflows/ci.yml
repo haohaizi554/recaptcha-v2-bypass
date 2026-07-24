@@ -12,6 +12,8 @@
 #   - 不在 CI 中安装 torch/ultralytics (~2GB), 仅测试纯逻辑
 #   - E2E 测试 (run_e2e_test.py 等) 需要真实浏览器+网络, 不在 CI 运行
 #   - Windows 平台: 项目使用 Win32 API / pyautogui, 必须在 windows-latest 运行
+#   - PYTHONUTF8=1: Windows CI 默认编码 (cp1252) 不支持中文输出,
+#     启用 Python UTF-8 模式避免 UnicodeEncodeError
 # ============================================================
 name: CI
 
@@ -23,6 +25,9 @@ on:
 
 permissions:
   contents: read
+
+env:
+  PYTHONUTF8: "1"
 
 jobs:
   # ============================================================
