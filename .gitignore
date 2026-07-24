@@ -8,6 +8,10 @@ __pycache__/
 dist/
 build/
 
+# Test / Lint Cache
+.pytest_cache/
+.ruff_cache/
+
 # Virtual Environment
 .venv/
 venv/

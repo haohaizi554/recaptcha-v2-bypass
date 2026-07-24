@@ -1,0 +1,102 @@
+# ============================================================
+# CI 工作流 — 代码质量 + 单元测试 + 依赖检查
+# ============================================================
+# 触发: push/PR 到 main 分支
+#
+# 作业:
+#   lint  — ruff 代码质量检查 (ubuntu, 无需安装项目依赖)
+#   test  — pytest 单元测试 (windows, 轻量依赖)
+#   check — python main.py --check 依赖完整性验证 (windows)
+#
+# 设计决策:
+#   - 不在 CI 中安装 torch/ultralytics (~2GB), 仅测试纯逻辑
+#   - E2E 测试 (run_e2e_test.py 等) 需要真实浏览器+网络, 不在 CI 运行
+#   - Windows 平台: 项目使用 Win32 API / pyautogui, 必须在 windows-latest 运行
+# ============================================================
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # ============================================================
+  # 作业 1: 代码质量检查 (ruff, 无需项目依赖)
+  # ============================================================
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: pip install ruff>=0.5.0
+
+      - name: Run ruff check
+        run: ruff check --output-format=github .
+
+      - name: Run ruff format check
+        run: ruff format --check .
+
+  # ============================================================
+  # 作业 2: 单元测试 (纯逻辑, 无浏览器/无 ML 模型)
+  # ============================================================
+  test:
+    name: Unit Tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: |
+          pip install pytest>=8.0.0
+          pip install requests>=2.31.0
+
+      - name: Run unit tests
+        run: python -m pytest tests/ -v --tb=short
+
+  # ============================================================
+  # 作业 3: 入口验证 (version / list / check)
+  # ============================================================
+  check:
+    name: Entry Point Check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install minimal dependencies
+        run: pip install requests>=2.31.0
+
+      - name: Verify --version
+        run: python main.py --version
+
+      - name: Verify --list
+        run: python main.py --list
+
+      - name: Verify --check (expect missing deps)
+        continue-on-error: true
+        run: |
+          python main.py --check
+          # --check 在依赖缺失时返回非零退出码, 这是预期行为
+          # CI 中不安装 torch/ultralytics (~2GB), 仅验证检查机制本身能运行
+          # continue-on-error: true 确保非零退出码不会导致 CI 失败

@@ -1,0 +1,67 @@
+# ============================================================
+# Release 工作流 — tag 触发, 创建 GitHub Release
+# ============================================================
+# 触发: 推送 v* 格式的 tag (如 v2.0.0)
+#
+# 产物:
+#   - 源码 zip/tar.gz (GitHub 自动生成)
+#   - requirements.txt 快照
+#   - 版本信息文件
+# ============================================================
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: notes
+        shell: bash
+        run: |
+          # 收集从上一个 tag 到当前 tag 的 commit 历史
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            NOTES=$(git log --pretty=format:"- %s (%h)" "$PREV_TAG"..HEAD 2>/dev/null)
+          else
+            NOTES=$(git log --pretty=format:"- %s (%h)" HEAD~20..HEAD 2>/dev/null || echo "Initial release")
+          fi
+          # 写入文件避免多行变量问题
+          echo "$NOTES" > release_notes.md
+          echo "Generated release notes:"
+          cat release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.tag, '-') }}
+          generate_release_notes: true
